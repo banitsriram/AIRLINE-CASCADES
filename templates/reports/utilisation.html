@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Aircraft Utilisation{% endblock %}
+{% block content %}
+<h1>Aircraft Utilisation</h1>
+<table class="data-table">
+  <thead><tr><th>Registration</th><th>Model</th><th>Flights</th><th>Sched Hours</th><th>Delay Hours</th></tr></thead>
+  <tbody>
+    {% for r in rows %}
+    <tr><td>{{ r.registration }}</td><td>{{ r.model }}</td><td>{{ r.flights_operated }}</td><td>{{ r.scheduled_flight_hours }}</td><td>{{ r.total_delay_hours }}</td></tr>
+    {% else %}
+    <tr><td colspan="5">No data.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

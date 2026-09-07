@@ -109,7 +109,13 @@ BEGIN
 
   START TRANSACTION;
 
-  SET p_pnr = UPPER(SUBSTRING(MD5(RAND()), 1, 6));
+  -- MD5()/SHA1() are unavailable on MySQL builds linked against an OpenSSL 3.x
+  -- "default" provider with the legacy provider disabled (common on Homebrew
+  -- installs) -- calling either raises "FUNCTION db.MD5 does not exist" even
+  -- though the function exists on a standard build. UUID() has no such
+  -- dependency and is equally suitable for generating a random PNR. See
+  -- DEVIATIONS.md.
+  SET p_pnr = UPPER(SUBSTRING(REPLACE(UUID(), '-', ''), 1, 6));
 
   INSERT INTO booking (pnr, passenger_id, status)
   VALUES (p_pnr, p_passenger_id, 'CONFIRMED');

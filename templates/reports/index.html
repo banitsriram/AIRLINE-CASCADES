@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<h1>Reports</h1>
+<ul class="link-list">
+  <li><a href="{{ url_for('reports.ontime') }}">On-time performance</a></li>
+  <li><a href="{{ url_for('reports.delay_causes') }}">Top delay causes</a></li>
+  <li><a href="{{ url_for('reports.load_factor') }}">Load factor per flight</a></li>
+  <li><a href="{{ url_for('reports.duty_status') }}">Crew duty status</a></li>
+  <li><a href="{{ url_for('reports.utilisation') }}">Aircraft utilisation</a></li>
+</ul>
+{% endblock %}

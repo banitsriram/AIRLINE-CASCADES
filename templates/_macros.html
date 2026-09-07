@@ -1,0 +1,21 @@
+{% macro field(name, label, value='', type='text', required=False, options=None) %}
+  <label class="field">
+    <span>{{ label }}{% if required %} *{% endif %}</span>
+    {% if type == 'select' %}
+      <select name="{{ name }}" {% if required %}required{% endif %}>
+        {% for opt in options %}
+          <option value="{{ opt }}" {% if value == opt %}selected{% endif %}>{{ opt }}</option>
+        {% endfor %}
+      </select>
+    {% elif type == 'fk' %}
+      <select name="{{ name }}" {% if required %}required{% endif %}>
+        <option value="">--</option>
+        {% for opt in options %}
+          <option value="{{ opt.id }}" {% if value is not none and value|string == opt.id|string %}selected{% endif %}>{{ opt.label }}</option>
+        {% endfor %}
+      </select>
+    {% else %}
+      <input type="{{ type }}" name="{{ name }}" value="{{ value if value is not none else '' }}" {% if required %}required{% endif %}>
+    {% endif %}
+  </label>
+{% endmacro %}

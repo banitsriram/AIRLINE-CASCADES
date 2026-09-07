@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Duty Status{% endblock %}
+{% block content %}
+<h1>Crew nearing duty limit today</h1>
+<table class="data-table">
+  <thead><tr><th>Name</th><th>Role</th><th>Hours on duty</th><th>Hours flown</th><th>Hours remaining</th></tr></thead>
+  <tbody>
+    {% for d in duty %}
+    <tr>
+      <td>{{ d.name }}</td>
+      <td>{{ d.role }}</td>
+      <td>{{ d.hours_on_duty }}</td>
+      <td>{{ d.hours_flown }}</td>
+      <td>{{ d.hours_remaining }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5">No crew near the duty limit today.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

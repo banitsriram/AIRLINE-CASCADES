@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Admin{% endblock %}
+{% block content %}
+<h1>Reference Data</h1>
+<ul class="link-list">
+  {% for key, cfg in entities.items() %}
+  <li><a href="{{ url_for('admin.list_view', entity=key) }}">{{ cfg.label }}</a></li>
+  {% endfor %}
+</ul>
+{% endblock %}

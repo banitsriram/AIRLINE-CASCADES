@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Schema{% endblock %}
+{% block content %}
+<h1>Database Schema</h1>
+<table class="data-table">
+  <thead><tr><th>Table</th><th>Rows (approx.)</th><th>Created</th></tr></thead>
+  <tbody>
+    {% for t in tables %}
+    <tr>
+      <td><a href="{{ url_for('schema.table_detail', table_name=t.table_name) }}">{{ t.table_name }}</a></td>
+      <td>{{ t.table_rows }}</td>
+      <td>{{ t.create_time }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

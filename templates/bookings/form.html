@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field %}
+{% block title %}New Booking{% endblock %}
+{% block content %}
+<h1>New Booking</h1>
+<p>Creates a booking with its first ticket in one step (calls the book_ticket procedure).</p>
+<form method="post" class="form">
+  <label class="field">
+    <span>Passenger *</span>
+    <select name="passenger_id" required>
+      {% for p in passengers %}
+      <option value="{{ p.passenger_id }}">{{ p.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="field">
+    <span>Flight *</span>
+    <select name="flight_id" required>
+      {% for f in flights %}
+      <option value="{{ f.flight_id }}">{{ f.flight_number }} ({{ f.origin }} → {{ f.dest }})</option>
+      {% endfor %}
+    </select>
+  </label>
+  {{ field('seat_no', 'Seat No.', '', required=True) }}
+  {{ field('ticket_class', 'Class', '', type='select', options=['ECONOMY','PREMIUM','BUSINESS','FIRST'], required=True) }}
+  {{ field('fare', 'Fare', '', type='number', required=True) }}
+  <button type="submit" class="btn">Book</button>
+</form>
+{% endblock %}

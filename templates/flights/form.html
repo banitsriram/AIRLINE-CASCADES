@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field %}
+{% block title %}{{ 'Edit' if flight else 'New' }} Flight{% endblock %}
+{% block content %}
+<h1>{{ 'Edit' if flight else 'New' }} Flight</h1>
+<form method="post" class="form">
+  {{ field('flight_number', 'Flight Number', flight.flight_number if flight else '', required=True) }}
+  {{ field('route_id', 'Route', flight.route_id if flight else '', type='fk', options=routes, required=True) }}
+  {{ field('aircraft_id', 'Aircraft', flight.aircraft_id if flight else '', type='fk', options=aircraft, required=True) }}
+  {{ field('sched_departure', 'Scheduled Departure', (flight.sched_departure|string)[:16] if flight and flight.sched_departure else '', type='datetime-local', required=True) }}
+  {{ field('sched_arrival', 'Scheduled Arrival', (flight.sched_arrival|string)[:16] if flight and flight.sched_arrival else '', type='datetime-local', required=True) }}
+  {{ field('boarding_start', 'Boarding Start', (flight.boarding_start|string)[:16] if flight and flight.boarding_start else '', type='datetime-local') }}
+  {{ field('gate_close', 'Gate Close', (flight.gate_close|string)[:16] if flight and flight.gate_close else '', type='datetime-local') }}
+  {% if flight %}
+  {{ field('actual_departure', 'Actual Departure', (flight.actual_departure|string)[:16] if flight.actual_departure else '', type='datetime-local') }}
+  {{ field('actual_arrival', 'Actual Arrival', (flight.actual_arrival|string)[:16] if flight.actual_arrival else '', type='datetime-local') }}
+  {% endif %}
+  {{ field('status', 'Status', flight.status if flight else 'SCHEDULED', type='select', options=['SCHEDULED','BOARDING','DEPARTED','ARRIVED','CANCELLED','DIVERTED'], required=True) }}
+  <button type="submit" class="btn">Save</button>
+</form>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Cascade Simulator{% endblock %}
+{% block content %}
+<h1>Cascade Simulator</h1>
+<p>Pick a flight to view its cascade tree or simulate a new delay.</p>
+<table class="data-table">
+  <thead><tr><th>Flight</th><th>Route</th><th>Departure</th><th>Delay</th><th></th></tr></thead>
+  <tbody>
+    {% for f in flights %}
+    <tr>
+      <td>{{ f.flight_number }}</td>
+      <td>{{ f.origin }} → {{ f.dest }}</td>
+      <td>{{ f.sched_departure }}</td>
+      <td>{{ f.delay_minutes }} min</td>
+      <td><a class="btn btn-small" href="{{ url_for('cascade.trace', flight_id=f.flight_id) }}">Trace</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

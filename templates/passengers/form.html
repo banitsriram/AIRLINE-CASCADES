@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field %}
+{% block title %}{{ 'Edit' if passenger else 'New' }} Passenger{% endblock %}
+{% block content %}
+<h1>{{ 'Edit' if passenger else 'New' }} Passenger</h1>
+<form method="post" class="form">
+  {{ field('name', 'Name', passenger.name if passenger else '', required=True) }}
+  {{ field('passport_no', 'Passport No.', passenger.passport_no if passenger else '') }}
+  {{ field('email', 'Email', passenger.email if passenger else '', type='email') }}
+  {{ field('phone', 'Phone', passenger.phone if passenger else '') }}
+  {{ field('date_of_birth', 'Date of Birth', passenger.date_of_birth if passenger else '', type='date', required=True) }}
+  <button type="submit" class="btn">Save</button>
+</form>
+{% endblock %}

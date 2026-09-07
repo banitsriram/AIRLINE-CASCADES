@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{ passenger.name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>{{ passenger.name }}</h1>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('passengers.edit', passenger_id=passenger.passenger_id) }}">Edit</a>
+    <form method="post" action="{{ url_for('passengers.delete', passenger_id=passenger.passenger_id) }}" onsubmit="return confirm('Delete this passenger?');" class="inline-form">
+      <button type="submit" class="btn btn-danger">Delete</button>
+    </form>
+  </div>
+</div>
+<dl class="detail-grid">
+  <dt>Passport</dt><dd>{{ passenger.passport_no or '—' }}</dd>
+  <dt>Email</dt><dd>{{ passenger.email or '—' }}</dd>
+  <dt>Phone</dt><dd>{{ passenger.phone or '—' }}</dd>
+  <dt>Date of birth</dt><dd>{{ passenger.date_of_birth }}</dd>
+</dl>
+
+<h2>Bookings</h2>
+<table class="data-table">
+  <thead><tr><th>PNR</th><th>Date</th><th>Status</th></tr></thead>
+  <tbody>
+    {% for b in bookings %}
+    <tr>
+      <td><a href="{{ url_for('bookings.detail', booking_id=b.booking_id) }}">{{ b.pnr }}</a></td>
+      <td>{{ b.booking_date }}</td>
+      <td>{{ b.status }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="3">No bookings.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

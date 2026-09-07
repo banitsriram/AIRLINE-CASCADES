@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Passengers{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Passengers</h1>
+  <a class="btn" href="{{ url_for('passengers.new') }}">+ New Passenger</a>
+</div>
+<form method="get" class="filter-bar">
+  <input type="text" name="q" placeholder="Search by name" value="{{ search or '' }}">
+  <button type="submit" class="btn">Search</button>
+</form>
+<table class="data-table">
+  <thead><tr><th>Name</th><th>Passport</th><th>Email</th><th>Phone</th></tr></thead>
+  <tbody>
+    {% for p in passengers %}
+    <tr>
+      <td><a href="{{ url_for('passengers.detail', passenger_id=p.passenger_id) }}">{{ p.name }}</a></td>
+      <td>{{ p.passport_no or '—' }}</td>
+      <td>{{ p.email or '—' }}</td>
+      <td>{{ p.phone or '—' }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4">No passengers found.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

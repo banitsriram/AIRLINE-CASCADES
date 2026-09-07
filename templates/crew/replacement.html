@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Replacement Crew{% endblock %}
+{% block content %}
+<h1>Eligible replacement crew for flight #{{ flight_id }}</h1>
+<p>Certified on the aircraft type, based at the origin airport, not already assigned
+   to an overlapping flight, and under the 11-hour daily duty limit.</p>
+<table class="data-table">
+  <thead><tr><th>Name</th><th>Role</th></tr></thead>
+  <tbody>
+    {% for c in candidates %}
+    <tr><td>{{ c.name }}</td><td>{{ c.role }}</td></tr>
+    {% else %}
+    <tr><td colspan="2">No eligible replacement crew found.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

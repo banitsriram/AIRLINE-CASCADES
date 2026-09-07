@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Booking {{ booking.pnr }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Booking {{ booking.pnr }}</h1>
+  <div class="actions">
+    {% if booking.status != 'CANCELLED' %}
+    <form method="post" action="{{ url_for('bookings.cancel', booking_id=booking.booking_id) }}" onsubmit="return confirm('Cancel this booking?');" class="inline-form">
+      <button type="submit" class="btn btn-danger">Cancel Booking</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+<dl class="detail-grid">
+  <dt>Passenger</dt><dd>{{ booking.passenger_name }}</dd>
+  <dt>Status</dt><dd>{{ booking.status }}</dd>
+  <dt>Booking date</dt><dd>{{ booking.booking_date }}</dd>
+</dl>
+
+<h2>Tickets</h2>
+<table class="data-table">
+  <thead><tr><th>Flight</th><th>Seat</th><th>Class</th><th>Fare</th><th>Checked in</th><th></th></tr></thead>
+  <tbody>
+    {% for t in tickets %}
+    <tr>
+      <td>{{ t.flight_number }}</td>
+      <td>{{ t.seat_no }}</td>
+      <td>{{ t.class }}</td>
+      <td>{{ t.fare }}</td>
+      <td>{{ t.checked_in_at or '—' }}</td>
+      <td>
+        {% if not t.checked_in_at %}
+        <form method="post" action="{{ url_for('bookings.checkin', ticket_id=t.ticket_id) }}" class="inline-form">
+          <input type="hidden" name="booking_id" value="{{ booking.booking_id }}">
+          <button type="submit" class="btn btn-small">Check In</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6">No tickets.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>Add another ticket</h2>
+<form method="post" action="{{ url_for('bookings.add_ticket', booking_id=booking.booking_id) }}" class="form-inline">
+  <select name="flight_id" required>
+    {% for f in flights %}
+    <option value="{{ f.flight_id }}">{{ f.flight_number }} ({{ f.origin }} → {{ f.dest }})</option>
+    {% endfor %}
+  </select>
+  <input type="text" name="seat_no" placeholder="Seat" required>
+  <select name="ticket_class" required>
+    {% for c in ['ECONOMY','PREMIUM','BUSINESS','FIRST'] %}
+    <option value="{{ c }}">{{ c }}</option>
+    {% endfor %}
+  </select>
+  <input type="number" step="0.01" name="fare" placeholder="Fare" required>
+  <button type="submit" class="btn">Add Ticket</button>
+</form>
+{% endblock %}

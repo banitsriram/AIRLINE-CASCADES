@@ -52,6 +52,17 @@ def execute(sql, params=None):
         return lastrowid
 
 
+def call_proc_with_out(proc_name, args):
+    """Call a stored procedure that has OUT/INOUT params and return the
+    resolved args tuple (used by book_ticket's OUT p_pnr)."""
+    with get_conn() as conn:
+        cursor = conn.cursor()
+        result = cursor.callproc(proc_name, args)
+        cursor.close()
+        conn.commit()
+        return result
+
+
 def call_proc(proc_name, args=None):
     """Call a stored procedure and return all result sets (list of list-of-dict)."""
     with get_conn() as conn:

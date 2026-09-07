@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Flight {{ flight.flight_number }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>{{ flight.flight_number }} — {{ flight.origin }} → {{ flight.dest }}</h1>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('flights.edit', flight_id=flight.flight_id) }}">Edit</a>
+    <a class="btn" href="{{ url_for('cascade.trace', flight_id=flight.flight_id) }}">Cascade Trace</a>
+    <a class="btn" href="{{ url_for('crew.replacement', flight_id=flight.flight_id) }}">Find Replacement Crew</a>
+    <form method="post" action="{{ url_for('flights.delete', flight_id=flight.flight_id) }}" onsubmit="return confirm('Delete this flight?');" class="inline-form">
+      <button type="submit" class="btn btn-danger">Delete</button>
+    </form>
+  </div>
+</div>
+
+<dl class="detail-grid">
+  <dt>Aircraft</dt><dd>{{ flight.registration }}</dd>
+  <dt>Status</dt><dd>{{ flight.status }}</dd>
+  <dt>Scheduled departure</dt><dd>{{ flight.sched_departure }}</dd>
+  <dt>Scheduled arrival</dt><dd>{{ flight.sched_arrival }}</dd>
+  <dt>Actual departure</dt><dd>{{ flight.actual_departure or '—' }}</dd>
+  <dt>Actual arrival</dt><dd>{{ flight.actual_arrival or '—' }}</dd>
+  <dt>Delay</dt><dd>{{ flight.delay_minutes }} min</dd>
+  <dt>Parent flight (cascade source)</dt><dd>{{ flight.parent_flight_id or '—' }}</dd>
+</dl>
+
+<h2>Crew assigned</h2>
+<table class="data-table">
+  <thead><tr><th>Name</th><th>Role</th><th>Assigned</th><th></th></tr></thead>
+  <tbody>
+    {% for c in crew %}
+    <tr>
+      <td>{{ c.name }}</td>
+      <td>{{ c.role }}</td>
+      <td>{{ c.assigned_at }}</td>
+      <td>
+        <form method="post" action="{{ url_for('flights.unassign_crew', flight_id=flight.flight_id, crew_id=c.crew_id) }}" class="inline-form">
+          <button type="submit" class="btn btn-small">Unassign</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4">No crew assigned.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<form method="post" action="{{ url_for('flights.assign_crew', flight_id=flight.flight_id) }}" class="form-inline">
+  <select name="crew_id" required>
+    {% for c in all_crew %}
+    <option value="{{ c.id }}">{{ c.label }}</option>
+    {% endfor %}
+  </select>
+  <input type="text" name="role" placeholder="Role on this flight" required>
+  <button type="submit" class="btn">Assign</button>
+</form>
+
+<h2>Delay history</h2>
+<table class="data-table">
+  <thead><tr><th>Category</th><th>Reason</th><th>Minutes</th><th>Recorded</th></tr></thead>
+  <tbody>
+    {% for d in delays %}
+    <tr><td>{{ d.category }}</td><td>{{ d.description }}</td><td>{{ d.minutes }}</td><td>{{ d.recorded_at }}</td></tr>
+    {% else %}
+    <tr><td colspan="4">No delays recorded.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

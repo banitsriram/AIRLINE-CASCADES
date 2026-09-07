@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Airline Cascades{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+<div class="stat-grid">
+  <div class="stat-card"><span class="stat-value">{{ summary.flights_today }}</span><span class="stat-label">Flights today</span></div>
+  <div class="stat-card"><span class="stat-value">{{ summary.delayed_now }}</span><span class="stat-label">Currently delayed</span></div>
+  <div class="stat-card"><span class="stat-value">{{ summary.active_aircraft }}</span><span class="stat-label">Active aircraft</span></div>
+  <div class="stat-card"><span class="stat-value">{{ summary.crew_on_duty }}</span><span class="stat-label">Crew on duty</span></div>
+  <div class="stat-card"><span class="stat-value">{{ summary.confirmed_bookings }}</span><span class="stat-label">Confirmed bookings</span></div>
+</div>
+
+<h2>Recent delays</h2>
+<table class="data-table">
+  <thead><tr><th>Flight</th><th>Category</th><th>Minutes</th><th>Recorded</th></tr></thead>
+  <tbody>
+    {% for d in recent_delays %}
+    <tr>
+      <td>{{ d.flight_number }}</td>
+      <td>{{ d.category }}</td>
+      <td>{{ d.minutes }}</td>
+      <td>{{ d.recorded_at }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4">No delays recorded yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

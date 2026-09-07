@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Cascade Trace — {{ flight.flight_number }}{% endblock %}
+{% block content %}
+<h1>Cascade Trace — {{ flight.flight_number }}</h1>
+
+<h2>Simulate a new delay</h2>
+<form method="post" action="{{ url_for('cascade.simulate', flight_id=flight.flight_id) }}" class="form-inline">
+  <input type="number" name="minutes" min="1" placeholder="Minutes" required>
+  <select name="reason_id" required>
+    {% for r in reasons %}
+    <option value="{{ r.id }}">{{ r.label }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn">Simulate Delay</button>
+</form>
+
+<h2>Cascade tree (root: {{ flight.flight_number }})</h2>
+<table class="data-table">
+  <thead><tr><th>Depth</th><th>Flight</th><th>Scheduled departure</th><th>Delay (min)</th></tr></thead>
+  <tbody>
+    {% for row in tree %}
+    <tr>
+      <td>{{ row.cascade_depth }}</td>
+      <td><a href="{{ url_for('flights.detail', flight_id=row.flight_id) }}">{{ row.flight_number }}</a></td>
+      <td>{{ row.sched_departure }}</td>
+      <td>{{ row.delay_minutes }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4">No cascade — this flight has no downstream delays.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>Passengers affected</h2>
+<table class="data-table">
+  <thead><tr><th>Passenger</th><th>Email</th><th>Flight</th><th>Seat</th><th>Class</th></tr></thead>
+  <tbody>
+    {% for p in passengers %}
+    <tr><td>{{ p.name }}</td><td>{{ p.email or '—' }}</td><td>{{ p.flight_id }}</td><td>{{ p.seat_no }}</td><td>{{ p.class }}</td></tr>
+    {% else %}
+    <tr><td colspan="5">No passengers affected.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
