@@ -1,14 +1,11 @@
 {% extends "base.html" %}
+{% from "_macros.html" import headline %}
 {% block title %}Airports{% endblock %}
 {% block content %}
-<div class="page-header">
-  <h1>Airports</h1>
-  <div class="actions">
-    <a class="btn btn-ghost" href="{{ url_for('admin.list_view', entity='gate') }}">Manage gates</a>
-    <a class="btn" href="{{ url_for('admin.new', entity='airport') }}">+ New airport</a>
-  </div>
-</div>
-<p class="hint">These operating rules drive the cascade: turnaround (aircraft), slots per hour (runway), minimum connection time (passengers) and curfew hours.</p>
+{% call headline('Airports', '{:,}'.format(airports|length) ~ ' airports', 'Each airport\'s rules drive the cascade: aircraft turnaround, runway departures per hour, passenger connection time and curfew hours.') %}
+  <a class="btn" href="{{ url_for('admin.new', entity='airport') }}">New airport</a>
+  <a class="btn btn-ghost" href="{{ url_for('admin.list_view', entity='gate') }}">Manage gates</a>
+{% endcall %}
 <table class="data-table">
   <thead><tr><th>Airport</th><th>City</th><th>Hours</th><th>Slots/h</th><th>Turnaround</th><th>Min connect</th><th>Gates</th><th>Departures today</th><th>Delayed</th><th></th></tr></thead>
   <tbody>

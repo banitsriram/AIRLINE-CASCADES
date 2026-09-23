@@ -8,7 +8,7 @@
   <thead><tr><th>Name</th><th>Role</th></tr></thead>
   <tbody>
     {% for c in candidates %}
-    <tr><td>{{ c.name }}</td><td>{{ c.role }}</td></tr>
+    <tr><td>{{ c.name }}</td><td>{{ c.role|human }}</td></tr>
     {% else %}
     <tr><td colspan="2">No eligible replacement crew found.</td></tr>
     {% endfor %}

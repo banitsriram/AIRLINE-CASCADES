@@ -5,7 +5,7 @@
 <h1>{{ 'Edit' if crew else 'New' }} Crew Member</h1>
 <form method="post" class="form">
   {{ field('name', 'Name', crew.name if crew else '', required=True) }}
-  {{ field('role', 'Role', crew.role if crew else '', type='select', options=['CAPTAIN','FIRST_OFFICER','CABIN_CREW','PURSER'], required=True) }}
+  {{ field('role', 'Role', crew.role if crew else '', type='select', options=enum_values('crew', 'role'), required=True) }}
   {{ field('base_airport_id', 'Base Airport', crew.base_airport_id if crew else '', type='fk', options=airports, required=True) }}
   {{ field('hire_date', 'Hire Date', crew.hire_date if crew else '', type='date', required=True) }}
   {% if crew %}

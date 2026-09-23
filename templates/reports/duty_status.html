@@ -6,7 +6,7 @@
   <thead><tr><th>Name</th><th>Role</th><th>Hours on duty</th><th>Hours flown</th><th>Remaining</th></tr></thead>
   <tbody>
     {% for r in rows %}
-    <tr><td>{{ r.name }}</td><td>{{ r.role }}</td><td>{{ r.hours_on_duty }}</td><td>{{ r.hours_flown }}</td><td>{{ r.hours_remaining }}</td></tr>
+    <tr><td>{{ r.name }}</td><td>{{ r.role|human }}</td><td>{{ r.hours_on_duty }}</td><td>{{ r.hours_flown }}</td><td>{{ r.hours_remaining }}</td></tr>
     {% else %}
     <tr><td colspan="5">No crew near the duty limit today.</td></tr>
     {% endfor %}

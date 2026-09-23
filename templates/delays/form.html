@@ -3,7 +3,10 @@
 {% block title %}Delay {{ flight.flight_number }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h1>File a delay — {{ flight.flight_number }} {{ flight.origin }} → {{ flight.dest }}</h1>
+  <div>
+    <h1>Delay {{ flight.flight_number }}</h1>
+    <p>{{ flight.origin_city }} to {{ flight.dest_city }}. Filing this moves every flight that depends on it.</p>
+  </div>
   <a class="btn btn-ghost" href="{{ url_for('flights.detail', flight_id=flight.flight_id) }}">Back to flight</a>
 </div>
 
@@ -11,8 +14,8 @@
   <dt>Status</dt><dd>{{ status_badge(flight.display_status) }}</dd>
   <dt>Aircraft</dt><dd>{{ flight.registration }}</dd>
   <dt>Gate</dt><dd>{{ flight.gate_code or '—' }}</dd>
-  <dt>Scheduled departure</dt><dd>{{ flight.std }}</dd>
-  <dt>Current estimate (ETD / ETA)</dt><dd>{{ flight.etd }} / {{ flight.eta }}{% if flight.delay_minutes %} <span class="late">(+{{ flight.delay_minutes }} min already)</span>{% endif %}</dd>
+  <dt>Scheduled departure</dt><dd>{{ flight.std|when }}</dd>
+  <dt>Current estimate (ETD / ETA)</dt><dd>{{ flight.etd|when }} / {{ flight.eta|when }}{% if flight.delay_minutes %} <span class="late">(+{{ flight.delay_minutes }} min already)</span>{% endif %}</dd>
 </dl>
 
 <form method="post" class="form form-wide" id="delay-form"
@@ -28,7 +31,7 @@
         <select name="code_id" required>
           <option value="">— choose a reason —</option>
           {% for cat, group in codes|groupby('category') %}
-          <optgroup label="{{ cat }}">
+          <optgroup label="{{ cat|human }}">
             {% for c in group %}
             <option value="{{ c.id }}" {% if values.get('code_id') == c.id|string %}selected{% endif %}>{{ c.iata_code }} — {{ c.description }}</option>
             {% endfor %}
@@ -47,12 +50,12 @@
       </label>
       <label class="field"><span>Phase when delay occurred *</span>
         <select name="phase" required>
-          {% for p in phases %}<option value="{{ p }}" {% if values.get('phase') == p %}selected{% endif %}>{{ p|replace('_', ' ')|title }}</option>{% endfor %}
+          {% for p in phases %}<option value="{{ p }}" {% if values.get('phase') == p %}selected{% endif %}>{{ p|human }}</option>{% endfor %}
         </select>
       </label>
       <label class="field"><span>Operational status *</span>
         <select name="ops_status" id="ops_status" required>
-          {% for s in ops_statuses %}<option value="{{ s }}" {% if values.get('ops_status') == s %}selected{% endif %}>{{ s|replace('_', ' ') }}</option>{% endfor %}
+          {% for s in ops_statuses %}<option value="{{ s }}" {% if values.get('ops_status') == s %}selected{% endif %}>{{ s|human }}</option>{% endfor %}
         </select>
       </label>
     </div>
@@ -105,7 +108,7 @@
     </div>
   </fieldset>
 
-  <button type="submit" class="btn btn-warn">File delay &amp; cascade</button>
+  <button type="submit" class="btn">File delay and cascade</button>
 </form>
 
 <script>
@@ -123,7 +126,9 @@
 
   function sync(minutes) {
     const etd = new Date(base.getTime() + minutes * 60000);
-    $("new_eta_preview").textContent = local(new Date(etd.getTime() + blockMs)).replace("T", " ");
+    const eta = new Date(etd.getTime() + blockMs);
+    $("new_eta_preview").textContent =
+      eta.toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short" }) + ", " + hhmm(eta);
     if (boarding) $("new_boarding_time").value = local(new Date(boarding.getTime() + minutes * 60000));
     $("meal_voucher").checked = minutes >= 120;
     $("compensation_eligible").checked = minutes >= 180;

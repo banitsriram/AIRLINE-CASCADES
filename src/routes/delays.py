@@ -4,11 +4,11 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 
 from src.routes.helpers import db_action
 from src.services import delays as delays_service
+from src.services.lookups import enum_values
+from src.services import schema_info
 
 bp = Blueprint("delays", __name__)
 
-PHASES = ["PRE_BOARDING", "AT_GATE", "TAXI", "AIRBORNE"]
-OPS_STATUSES = ["DELAYED", "ON_HOLD", "CANCELLED"]
 FLAGS = ("pax_deboarded", "meal_voucher", "compensation_eligible", "rebooking_offered")
 
 
@@ -53,9 +53,9 @@ def notice_from_form(form, flight):
 
     notice["phase"] = form.get("phase")
     notice["ops_status"] = form.get("ops_status")
-    if notice["phase"] not in PHASES:
+    if notice["phase"] not in enum_values("flight_delay", "phase"):
         errors.append("Pick a delay phase")
-    if notice["ops_status"] not in OPS_STATUSES:
+    if notice["ops_status"] not in enum_values("flight_delay", "ops_status"):
         errors.append("Pick an operational status")
     if not notice["code_id"]:
         errors.append("Pick an IATA delay code")
@@ -94,6 +94,7 @@ def detail(delay_id):
         by_link=by_link,
         knock_on_minutes=sum(i["minutes_added"] for i in impacts),
         summary=delays_service.affected_summary(affected),
+        record=schema_info.record("flight_delay", "delay_id", delay_id),
     )
 
 

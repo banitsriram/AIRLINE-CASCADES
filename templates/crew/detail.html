@@ -1,10 +1,14 @@
 {% extends "base.html" %}
+{% from "_macros.html" import all_columns %}
 {% block title %}{{ crew.name }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h1>{{ crew.name }} — {{ crew.role }}</h1>
+  <div class="person">
+    <span class="role">{{ crew.role|human }}, {{ crew.base }}</span>
+    <h1>{{ crew.name }}</h1>
+  </div>
   <div class="actions">
-    <a class="btn" href="{{ url_for('crew.edit', crew_id=crew.crew_id) }}">Edit</a>
+    <a class="btn btn-ghost" href="{{ url_for('crew.edit', crew_id=crew.crew_id) }}">Edit</a>
     <form method="post" action="{{ url_for('crew.delete', crew_id=crew.crew_id) }}" onsubmit="return confirm('Delete this crew member?');" class="inline-form">
       <button type="submit" class="btn btn-danger">Delete</button>
     </form>
@@ -12,8 +16,8 @@
 </div>
 <dl class="detail-grid">
   <dt>Base</dt><dd>{{ crew.base }}</dd>
-  <dt>Hired</dt><dd>{{ crew.hire_date }}</dd>
-  <dt>Terminated</dt><dd>{{ crew.terminated_at or '—' }}</dd>
+  <dt>Hired</dt><dd>{{ crew.hire_date|when }}</dd>
+  <dt>Terminated</dt><dd>{{ (crew.terminated_at|when) or '—' }}</dd>
 </dl>
 
 <h2>Certifications</h2>
@@ -23,8 +27,8 @@
     {% for c in certs %}
     <tr>
       <td>{{ c.manufacturer }} {{ c.model }}</td>
-      <td>{{ c.certified_date }}</td>
-      <td>{{ c.expiry_date }}</td>
+      <td>{{ c.certified_date|when }}</td>
+      <td>{{ c.expiry_date|when }}</td>
       <td>
         <form method="post" action="{{ url_for('crew.decertify', crew_id=crew.crew_id, type_id=c.type_id) }}" class="inline-form">
           <button type="submit" class="btn btn-small">Remove</button>
@@ -45,6 +49,8 @@
   </select>
   <input type="date" name="certified_date" required>
   <input type="date" name="expiry_date" required>
-  <button type="submit" class="btn">Add Certification</button>
+  <button type="submit" class="btn">Add certification</button>
 </form>
+
+{{ all_columns('crew', record) }}
 {% endblock %}

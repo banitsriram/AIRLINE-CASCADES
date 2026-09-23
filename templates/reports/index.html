@@ -1,12 +1,13 @@
 {% extends "base.html" %}
+{% from "_macros.html" import headline %}
 {% block title %}Reports{% endblock %}
 {% block content %}
-<h1>Reports</h1>
+{{ headline('Reports', '5 reports', 'Performance across the whole operation, recalculated from the live data every time you open one.') }}
 <ul class="link-list">
-  <li><a href="{{ url_for('reports.ontime') }}">On-time performance</a></li>
-  <li><a href="{{ url_for('reports.delay_causes') }}">Top delay causes</a></li>
-  <li><a href="{{ url_for('reports.load_factor') }}">Load factor per flight</a></li>
-  <li><a href="{{ url_for('reports.duty_status') }}">Crew duty status</a></li>
-  <li><a href="{{ url_for('reports.utilisation') }}">Aircraft utilisation</a></li>
+  <li><a href="{{ url_for('reports.ontime') }}"><span>On-time performance<small>Share of flights within 15 minutes of schedule, by day.</small></span></a></li>
+  <li><a href="{{ url_for('reports.delay_causes') }}"><span>Delay causes<small>Filed delays and minutes lost, by category.</small></span></a></li>
+  <li><a href="{{ url_for('reports.load_factor') }}"><span>Load factor<small>Seats sold against capacity, per flight.</small></span></a></li>
+  <li><a href="{{ url_for('reports.duty_status') }}"><span>Crew duty status<small>Crew close to the 11-hour daily limit today.</small></span></a></li>
+  <li><a href="{{ url_for('reports.utilisation') }}"><span>Aircraft utilisation<small>Flights, scheduled hours and delay hours per aircraft.</small></span></a></li>
 </ul>
 {% endblock %}

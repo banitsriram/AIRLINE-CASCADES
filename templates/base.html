@@ -3,31 +3,56 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Airline Cascades{% endblock %}</title>
+  <title>{% block title %}Airline Cascades{% endblock %} · Cascades</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;400;600&display=swap" rel="stylesheet">
+  <link rel="icon" href="{{ url_for('static', filename='img/mark.svg') }}" type="image/svg+xml">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+  <canvas id="ambient-field" aria-hidden="true"></canvas>
   <header class="topbar">
-    <a class="brand" href="{{ url_for('dashboard.index') }}">Airline Cascades</a>
-    <nav>
-      <a href="{{ url_for('dashboard.index') }}">Dashboard</a>
-      <a href="{{ url_for('flights.list_view') }}">Flights</a>
-      <a href="{{ url_for('delays.list_view') }}">Delays</a>
-      <a href="{{ url_for('airports.list_view') }}">Airports</a>
-      <a href="{{ url_for('cascade.index') }}">Cascade</a>
-      <a href="{{ url_for('crew.list_view') }}">Crew</a>
-      <a href="{{ url_for('passengers.list_view') }}">Passengers</a>
-      <a href="{{ url_for('bookings.list_view') }}">Bookings</a>
-      <a href="{{ url_for('reports.index') }}">Reports</a>
-      <a href="{{ url_for('admin.index') }}">Admin</a>
-      <a href="{{ url_for('schema.index') }}">Schema</a>
+    <a class="brand" href="{{ url_for('dashboard.index') }}" aria-label="Cascades, operations dashboard">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <defs><linearGradient id="mark" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#8052ff"/><stop offset="1" stop-color="#15846e"/>
+        </linearGradient></defs>
+        <path d="M16 2 30 28H2z" fill="url(#mark)"/>
+        <path d="M16 13 22.5 25h-13z" fill="#000"/>
+      </svg>
+      Cascades
+    </a>
+    <nav aria-label="Main">
+      {% set here = request.blueprint %}
+      {% for bp, endpoint, label in [
+        ('dashboard', 'dashboard.index', 'Dashboard'),
+        ('flights', 'flights.list_view', 'Flights'),
+        ('delays', 'delays.list_view', 'Delays'),
+        ('airports', 'airports.list_view', 'Airports'),
+        ('cascade', 'cascade.index', 'Cascade'),
+        ('crew', 'crew.list_view', 'Crew'),
+        ('passengers', 'passengers.list_view', 'Passengers'),
+        ('bookings', 'bookings.list_view', 'Bookings'),
+        ('reports', 'reports.index', 'Reports'),
+        ('admin', 'admin.index', 'Admin'),
+        ('schema', 'schema.index', 'Schema'),
+      ] %}
+      <a href="{{ url_for(endpoint) }}" {% if here == bp %}aria-current="page"{% endif %}>{{ label }}</a>
+      {% endfor %}
     </nav>
+    <div class="topbar-end">
+      {% if delayed_now %}
+      <a class="nav-late" href="{{ url_for('flights.list_view', status='DELAYED') }}">{{ delayed_now }} late</a>
+      {% endif %}
+      <a class="btn" href="{{ url_for('flights.list_view', status='SCHEDULED') }}">File a delay</a>
+    </div>
   </header>
 
   <main class="container">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
-        <ul class="flashes">
+        <ul class="flashes" role="status">
           {% for category, message in messages %}
             <li class="flash flash-{{ category }}">{{ message }}</li>
           {% endfor %}
@@ -37,5 +62,6 @@
 
     {% block content %}{% endblock %}
   </main>
+  <script src="{{ url_for('static', filename='js/ambient.js') }}" defer></script>
 </body>
 </html>

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import all_columns %}
 {% block title %}Booking {{ booking.pnr }}{% endblock %}
 {% block content %}
 <div class="page-header">
@@ -6,15 +7,15 @@
   <div class="actions">
     {% if booking.status != 'CANCELLED' %}
     <form method="post" action="{{ url_for('bookings.cancel', booking_id=booking.booking_id) }}" onsubmit="return confirm('Cancel this booking?');" class="inline-form">
-      <button type="submit" class="btn btn-danger">Cancel Booking</button>
+      <button type="submit" class="btn btn-danger">Cancel booking</button>
     </form>
     {% endif %}
   </div>
 </div>
 <dl class="detail-grid">
   <dt>Passenger</dt><dd>{{ booking.passenger_name }}</dd>
-  <dt>Status</dt><dd>{{ booking.status }}</dd>
-  <dt>Booking date</dt><dd>{{ booking.booking_date }}</dd>
+  <dt>Status</dt><dd>{{ booking.status|human }}</dd>
+  <dt>Booking date</dt><dd>{{ booking.booking_date|when }}</dd>
 </dl>
 
 <h2>Tickets</h2>
@@ -25,14 +26,14 @@
     <tr>
       <td>{{ t.flight_number }}</td>
       <td>{{ t.seat_no }}</td>
-      <td>{{ t.class }}</td>
+      <td>{{ t.class|human }}</td>
       <td>{{ t.fare }}</td>
-      <td>{{ t.checked_in_at or '—' }}</td>
+      <td>{{ (t.checked_in_at|when) or '—' }}</td>
       <td>
         {% if not t.checked_in_at %}
         <form method="post" action="{{ url_for('bookings.checkin', ticket_id=t.ticket_id) }}" class="inline-form">
           <input type="hidden" name="booking_id" value="{{ booking.booking_id }}">
-          <button type="submit" class="btn btn-small">Check In</button>
+          <button type="submit" class="btn btn-small">Check in</button>
         </form>
         {% endif %}
       </td>
@@ -52,11 +53,13 @@
   </select>
   <input type="text" name="seat_no" placeholder="Seat" required>
   <select name="ticket_class" required>
-    {% for c in ['ECONOMY','PREMIUM','BUSINESS','FIRST'] %}
-    <option value="{{ c }}">{{ c }}</option>
+    {% for c in enum_values('ticket', 'class') %}
+    <option value="{{ c }}">{{ c|human }}</option>
     {% endfor %}
   </select>
   <input type="number" step="0.01" name="fare" placeholder="Fare" required>
-  <button type="submit" class="btn">Add Ticket</button>
+  <button type="submit" class="btn">Add ticket</button>
 </form>
+
+{{ all_columns('booking', record) }}
 {% endblock %}

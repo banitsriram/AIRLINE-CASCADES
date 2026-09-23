@@ -1,6 +1,8 @@
-{% macro status_badge(s) %}<span class="badge badge-{{ s|lower|replace(' ', '-') }}">{{ s }}</span>{% endmacro %}
-{% macro times(sched, est, delay) %}
+{% macro status_badge(s) %}<span class="badge badge-{{ s|lower|replace(' ', '-')|replace('_', '-') }}">{{ s|replace('_', ' ') }}</span>{% endmacro %}
+{% macro times(sched, est, delay) -%}
+  <span class="time">
   {%- if delay and delay > 0 -%}
-    <s class="muted">{{ sched|hhmm }}</s> <strong class="late">{{ est|hhmm }}</strong>
+    <s class="muted" aria-label="scheduled {{ sched|hhmm }}">{{ sched|hhmm }}</s> <strong class="late">{{ est|hhmm }}</strong>
   {%- else -%}{{ sched|hhmm }}{%- endif -%}
-{% endmacro %}
+  </span>
+{%- endmacro %}

@@ -1,7 +1,8 @@
 {% extends "base.html" %}
+{% from "_macros.html" import headline %}
 {% block title %}Admin{% endblock %}
 {% block content %}
-<h1>Reference Data</h1>
+{{ headline('Reference data', '{:,}'.format(entities|length) ~ ' tables', 'The airports, gates, delay codes, routes and aircraft the rest of the operation is built on. Everything here is editable.') }}
 <ul class="link-list">
   {% for key, cfg in entities.items() %}
   <li><a href="{{ url_for('admin.list_view', entity=key) }}">{{ cfg.label }}</a></li>

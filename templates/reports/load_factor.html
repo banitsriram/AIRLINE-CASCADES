@@ -6,7 +6,7 @@
   <thead><tr><th>Flight</th><th>Departure</th><th>Seats</th><th>Sold</th><th>Load %</th></tr></thead>
   <tbody>
     {% for r in rows %}
-    <tr><td>{{ r.flight_number }}</td><td>{{ r.sched_departure }}</td><td>{{ r.seat_capacity }}</td><td>{{ r.tickets_sold }}</td><td>{{ r.load_factor_pct }}%</td></tr>
+    <tr><td>{{ r.flight_number }}</td><td>{{ r.sched_departure|when }}</td><td>{{ r.seat_capacity }}</td><td>{{ r.tickets_sold }}</td><td>{{ r.load_factor_pct }}%</td></tr>
     {% else %}
     <tr><td colspan="5">No data.</td></tr>
     {% endfor %}

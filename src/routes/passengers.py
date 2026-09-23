@@ -4,6 +4,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 
 from src.routes.helpers import db_action
 from src.services import passengers as passengers_service
+from src.services import schema_info
 
 bp = Blueprint("passengers", __name__)
 
@@ -36,6 +37,7 @@ def detail(passenger_id):
         "passengers/detail.html",
         passenger=passenger,
         bookings=passengers_service.bookings_for_passenger(passenger_id),
+        record=schema_info.record("passenger", "passenger_id", passenger_id),
     )
 
 

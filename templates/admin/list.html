@@ -3,13 +3,13 @@
 {% block content %}
 <div class="page-header">
   <h1>{{ cfg.label }}</h1>
-  <a class="btn" href="{{ url_for('admin.new', entity=entity) }}">+ New</a>
+  <a class="btn" href="{{ url_for('admin.new', entity=entity) }}">New {{ cfg.item }}</a>
 </div>
 <table class="data-table">
   <thead>
     <tr>
       <th>ID</th>
-      {% for f in cfg.fields %}<th>{{ f.label }}</th>{% endfor %}
+      {% for f in fields %}<th>{{ f.label }}{% if f.added %} <span class="muted" title="Column added to the table after the app was built">(new)</span>{% endif %}</th>{% endfor %}
       <th></th>
     </tr>
   </thead>
@@ -17,7 +17,7 @@
     {% for row in rows %}
     <tr>
       <td>{{ row[cfg.pk] }}</td>
-      {% for f in cfg.fields %}<td>{% if row[f.name] is none %}—{% elif f.type == 'time' %}{{ row[f.name]|hhmm }}{% else %}{{ row[f.name] }}{% endif %}</td>{% endfor %}
+      {% for f in fields %}<td>{% if row[f.name] is none %}—{% elif f.type == 'time' %}{{ row[f.name]|hhmm }}{% else %}{{ row[f.name] }}{% endif %}</td>{% endfor %}
       <td>
         <a class="btn btn-small" href="{{ url_for('admin.edit', entity=entity, row_id=row[cfg.pk]) }}">Edit</a>
         <form method="post" action="{{ url_for('admin.delete', entity=entity, row_id=row[cfg.pk]) }}" onsubmit="return confirm('Delete this entry?');" class="inline-form">
@@ -26,7 +26,7 @@
       </td>
     </tr>
     {% else %}
-    <tr><td colspan="{{ cfg.fields|length + 2 }}">No entries.</td></tr>
+    <tr><td colspan="{{ fields|length + 2 }}">No entries.</td></tr>
     {% endfor %}
   </tbody>
 </table>

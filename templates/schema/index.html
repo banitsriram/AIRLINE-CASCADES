@@ -1,16 +1,31 @@
 {% extends "base.html" %}
+{% from "_macros.html" import headline %}
 {% block title %}Schema{% endblock %}
 {% block content %}
-<h1>Database Schema</h1>
+{{ headline('Database schema', '{:,}'.format(tables|length) ~ ' tables, ' ~ views|length ~ ' views',
+            'Read live from information_schema: every table and view the application runs on.') }}
 <table class="data-table">
-  <thead><tr><th>Table</th><th>Rows (approx.)</th><th>Created</th></tr></thead>
+  <thead><tr><th>Table</th><th>Rows</th><th>Created</th><th></th></tr></thead>
   <tbody>
     {% for t in tables %}
     <tr>
       <td><a href="{{ url_for('schema.table_detail', table_name=t.table_name) }}">{{ t.table_name }}</a></td>
-      <td>{{ t.table_rows }}</td>
-      <td>{{ t.create_time }}</td>
+      <td class="num">{{ t.table_rows }}</td>
+      <td class="muted">{{ t.create_time|when }}</td>
+      <td><a class="btn btn-small" href="{{ url_for('schema.rows', table_name=t.table_name) }}">Rows</a></td>
     </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>Views</h2>
+<p class="hint">Derived on every read, never stored: estimated times and the operational flags.</p>
+<table class="data-table">
+  <thead><tr><th>View</th><th></th></tr></thead>
+  <tbody>
+    {% for v in views %}
+    <tr><td><a href="{{ url_for('schema.table_detail', table_name=v.table_name) }}">{{ v.table_name }}</a></td>
+        <td><a class="btn btn-small" href="{{ url_for('schema.rows', table_name=v.table_name) }}">Rows</a></td></tr>
     {% endfor %}
   </tbody>
 </table>

@@ -64,7 +64,22 @@ Each check changes data, so run it on a freshly seeded database:
 ```
 bash scripts/setup_db.sh && python tests/test_cascade.py
 bash scripts/setup_db.sh && python tests/test_crew_assignment.py
+python tests/test_live_changes.py   # manual MySQL edits show on the site (rebuilds the DB itself)
 ```
+
+## Changing tables by hand (viva)
+
+Edits made directly in MySQL show on the next page load: rows (INSERT/UPDATE/DELETE),
+new columns (every detail page has an "All columns" section; admin forms pick them up),
+new ENUM values (every dropdown reads them live), new tables and views (Schema page,
+with a row browser). A change that breaks a page's query shows MySQL's exact error.
+If your MySQL client has autocommit off, `COMMIT` first.
+
+## Report
+
+`python scripts/build_report_context.py` regenerates `docs/REPORT_CONTEXT.md`: the
+whole project (design, SQL, data, live test results, a measured cascade, screenshots
+list and full source) in one file to hand to Claude for writing the report.
 
 ## Docs
 
@@ -74,3 +89,5 @@ bash scripts/setup_db.sh && python tests/test_crew_assignment.py
 - `docs/SCHEMA_DIAGRAM.md` — relationship description
 - `docs/DEVIATIONS.md` — spec deviations
 - `docs/superpowers/specs/2026-09-23-org-wide-delay-cascade-design.md` — cascade design
+- `docs/REPORT_CONTEXT.md` — everything needed to write the project report (design, SQL, data, measured results, full source)
+- `docs/REPORT_CONTEXT_CORE.md` — the same without the source-code appendix (smaller upload)

@@ -130,3 +130,26 @@ avoiding eight near-identical CRUD modules for tables that don't need
 bespoke logic. Flights, crew, passengers, and bookings *do* have bespoke
 logic (cascade linkage, certifications, duty limits, the booking
 procedure), so those get dedicated blueprints instead.
+
+## Manual changes during the viva
+
+**Q: If I change a table directly in MySQL, does the website show it?**
+Yes, on the next page load. Nothing is cached; every page queries MySQL, and the
+connection pool resets each session when a connection is returned, so no old
+snapshot is reused. New columns appear in each record's "All columns" section
+(read with `SELECT *`) and in the admin forms. New ENUM values appear in every
+dropdown, because the options are read from `information_schema`. New tables and
+views are listed on the Schema page with a row browser, and row counts there are
+exact `COUNT(*)`, not InnoDB's cached estimate. `tests/test_live_changes.py`
+checks all of this.
+
+**Q: What if I rename or drop a column the app uses?**
+Pages that read `SELECT *` just show the new structure. A page whose query names
+the old column shows an error page with MySQL's exact message and error number,
+not a crash.
+
+**Q: What if I insert a delay into `flight_delay` directly?**
+It's recorded, but nothing moves: the cascade runs only through
+`simulate_delay()`, which also keeps `flight.delay_minutes` in step. Updating
+`flight.delay_minutes` directly does show everywhere at once, because ETD/ETA
+are computed from it by `v_flight_times`.

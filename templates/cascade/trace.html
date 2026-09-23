@@ -3,7 +3,7 @@
 {% block content %}
 <h1>Cascade Trace — {{ flight.flight_number }}</h1>
 
-<p><a class="btn btn-warn" href="{{ url_for('flights.delay', flight_id=flight.flight_id) }}">File a delay on {{ flight.flight_number }}</a>
+<p><a class="btn btn-primary-warn" href="{{ url_for('flights.delay', flight_id=flight.flight_id) }}">Delay {{ flight.flight_number }}</a>
   <span class="hint">The tree follows the aircraft and crew links recorded as each flight's knock-on source (parent_flight_id). The full impact of each delay, including runway-slot effects, is on its impact page.</span></p>
 
 <h2>Cascade tree (root: {{ flight.flight_number }})</h2>
@@ -14,7 +14,7 @@
     <tr>
       <td>{{ row.cascade_depth }}</td>
       <td><a href="{{ url_for('flights.detail', flight_id=row.flight_id) }}">{{ row.flight_number }}</a></td>
-      <td>{{ row.sched_departure }}</td>
+      <td>{{ row.sched_departure|when }}</td>
       <td>{{ row.delay_minutes }}</td>
     </tr>
     {% else %}
@@ -28,7 +28,7 @@
   <thead><tr><th>Passenger</th><th>Email</th><th>Flight</th><th>Seat</th><th>Class</th></tr></thead>
   <tbody>
     {% for p in passengers %}
-    <tr><td>{{ p.name }}</td><td>{{ p.email or '—' }}</td><td>{{ p.flight_id }}</td><td>{{ p.seat_no }}</td><td>{{ p.class }}</td></tr>
+    <tr><td>{{ p.name }}</td><td>{{ p.email or '—' }}</td><td>{{ p.flight_id }}</td><td>{{ p.seat_no }}</td><td>{{ p.class|human }}</td></tr>
     {% else %}
     <tr><td colspan="5">No passengers affected.</td></tr>
     {% endfor %}

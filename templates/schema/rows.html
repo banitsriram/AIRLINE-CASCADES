@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{{ table_name }} rows{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ table_name }}</h1>
+    <p>{{ '{:,}'.format(total) }} rows, {{ cols|length }} columns. Read live with <code>SELECT *</code>, so rows and columns changed directly in MySQL show up on refresh.</p>
+  </div>
+  <div class="actions">
+    <a class="btn btn-ghost" href="{{ url_for('schema.table_detail', table_name=table_name) }}">Structure</a>
+    <a class="btn btn-ghost" href="{{ url_for('schema.index') }}">All tables</a>
+  </div>
+</div>
+<div class="table-scroll">
+<table class="data-table">
+  <thead><tr>{% for c in cols %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>{% for c in cols %}<td class="nowrap">{% if r[c] is none %}<span class="muted">NULL</span>{% else %}{{ r[c] }}{% endif %}</td>{% endfor %}</tr>
+    {% else %}
+    <tr><td colspan="{{ cols|length or 1 }}">No rows.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% if pages > 1 %}
+<nav class="dots" aria-label="Pages">
+  {% if page > 1 %}<a class="dot-link" href="{{ url_for('schema.rows', table_name=table_name, page=page - 1) }}">Previous</a>{% endif %}
+  <span class="muted">Page {{ page }} of {{ pages }}</span>
+  {% if page < pages %}<a class="dot-link" href="{{ url_for('schema.rows', table_name=table_name, page=page + 1) }}">Next</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

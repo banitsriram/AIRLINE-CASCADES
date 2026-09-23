@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import all_columns %}
 {% from "_status.html" import status_badge %}
 {% block title %}Flight {{ flight.flight_number }}{% endblock %}
 {% block content %}
@@ -6,11 +7,11 @@
   <h1>{{ flight.flight_number }} — {{ flight.origin }} → {{ flight.dest }}</h1>
   <div class="actions">
     {% if flight.status in ('SCHEDULED', 'BOARDING', 'DEPARTED') %}
-    <a class="btn btn-warn" href="{{ url_for('flights.delay', flight_id=flight.flight_id) }}">Delay</a>
+    <a class="btn btn-primary-warn" href="{{ url_for('flights.delay', flight_id=flight.flight_id) }}">Delay this flight</a>
     {% endif %}
-    <a class="btn" href="{{ url_for('flights.edit', flight_id=flight.flight_id) }}">Edit</a>
-    <a class="btn" href="{{ url_for('cascade.trace', flight_id=flight.flight_id) }}">Cascade Trace</a>
-    <a class="btn" href="{{ url_for('crew.replacement', flight_id=flight.flight_id) }}">Find Replacement Crew</a>
+    <a class="btn btn-ghost" href="{{ url_for('flights.edit', flight_id=flight.flight_id) }}">Edit</a>
+    <a class="btn btn-ghost" href="{{ url_for('cascade.trace', flight_id=flight.flight_id) }}">Cascade trace</a>
+    <a class="btn btn-ghost" href="{{ url_for('crew.replacement', flight_id=flight.flight_id) }}">Replacement crew</a>
     <form method="post" action="{{ url_for('flights.delete', flight_id=flight.flight_id) }}" onsubmit="return confirm('Delete this flight?');" class="inline-form">
       <button type="submit" class="btn btn-danger">Delete</button>
     </form>
@@ -22,10 +23,10 @@
   <dt>Aircraft</dt><dd>{{ flight.registration }}</dd>
   <dt>Gate</dt><dd>{{ flight.gate_code or '—' }}</dd>
   <dt>Status</dt><dd>{{ status_badge(flight.display_status) }}</dd>
-  <dt>Scheduled departure / arrival</dt><dd>{{ flight.std }} / {{ flight.sta }}</dd>
-  <dt>Estimated departure / arrival</dt><dd>{% if flight.delay_minutes %}<strong class="late">{{ flight.etd }} / {{ flight.eta }}</strong>{% else %}On time{% endif %}</dd>
-  <dt>Boarding / gate close</dt><dd>{{ flight.boarding_start or '—' }} / {{ flight.gate_close or '—' }}</dd>
-  <dt>Actual departure / arrival</dt><dd>{{ flight.actual_departure or '—' }} / {{ flight.actual_arrival or '—' }}</dd>
+  <dt>Scheduled departure / arrival</dt><dd>{{ flight.std|when }} / {{ flight.sta|when }}</dd>
+  <dt>Estimated departure / arrival</dt><dd>{% if flight.delay_minutes %}<strong class="late">{{ flight.etd|when }} / {{ flight.eta|when }}</strong>{% else %}On time{% endif %}</dd>
+  <dt>Boarding / gate close</dt><dd>{{ (flight.boarding_start|when) or '—' }} / {{ (flight.gate_close|when) or '—' }}</dd>
+  <dt>Actual departure / arrival</dt><dd>{{ (flight.actual_departure|when) or '—' }} / {{ (flight.actual_arrival|when) or '—' }}</dd>
   <dt>Total delay</dt><dd>{{ flight.delay_minutes }} min</dd>
   <dt>Knock-on source</dt><dd>{% if flight.parent_flight_id %}<a href="{{ url_for('flights.detail', flight_id=flight.parent_flight_id) }}">flight #{{ flight.parent_flight_id }}</a>{% else %}—{% endif %}</dd>
   <dt>Remarks</dt><dd>{{ flight.remarks or '—' }}</dd>
@@ -38,8 +39,8 @@
     {% for c in crew %}
     <tr>
       <td>{{ c.name }}</td>
-      <td>{{ c.role }}</td>
-      <td>{{ c.assigned_at }}</td>
+      <td>{{ c.role|human }}</td>
+      <td>{{ c.assigned_at|when }}</td>
       <td>
         <form method="post" action="{{ url_for('flights.unassign_crew', flight_id=flight.flight_id, crew_id=c.crew_id) }}" class="inline-form">
           <button type="submit" class="btn btn-small">Unassign</button>
@@ -53,13 +54,15 @@
 </table>
 
 <form method="post" action="{{ url_for('flights.assign_crew', flight_id=flight.flight_id) }}" class="form-inline">
-  <select name="crew_id" required>
+  <select name="crew_id" required aria-label="Crew member">
     {% for c in all_crew %}
     <option value="{{ c.id }}">{{ c.label }}</option>
     {% endfor %}
   </select>
-  <input type="text" name="role" placeholder="Role on this flight" required>
-  <button type="submit" class="btn">Assign</button>
+  <select name="role" required aria-label="Role on this flight">
+    {% for r in enum_values('crew', 'role') %}<option value="{{ r }}">{{ r|human }}</option>{% endfor %}
+  </select>
+  <button type="submit" class="btn btn-ghost">Assign crew</button>
 </form>
 
 <h2>Delays filed on this flight</h2>
@@ -69,11 +72,11 @@
     {% for d in delays %}
     <tr>
       <td>{{ d.delay_id }}</td>
-      <td>{{ d.category }}{% if d.iata_code %} · {{ d.iata_code }} {{ d.description }}{% endif %}</td>
+      <td>{{ d.category|human }}{% if d.iata_code %}, {{ d.iata_code }} {{ d.description }}{% endif %}</td>
       <td>{{ d.sub_reason or '—' }}</td>
       <td>{{ d.minutes }}</td>
-      <td>{{ d.ops_status|replace('_', ' ') }}{% if d.resolved_at %} · resolved{% endif %}</td>
-      <td>{{ d.reported_by or '—' }}<br><span class="muted">{{ d.recorded_at }}</span></td>
+      <td>{{ d.ops_status|human }}{% if d.resolved_at %}, resolved{% endif %}</td>
+      <td>{{ d.reported_by or '—' }}<br><span class="muted">{{ d.recorded_at|when }}</span></td>
       <td><a class="btn btn-small" href="{{ url_for('delays.detail', delay_id=d.delay_id) }}">Impact</a></td>
     </tr>
     {% else %}
@@ -92,7 +95,7 @@
       <td>{{ k.source_flight }}</td>
       <td><span class="badge badge-link-{{ k.link|lower }}">{{ k.link }}</span></td>
       <td>{% if k.cause_flight_id %}<a href="{{ url_for('flights.detail', flight_id=k.cause_flight_id) }}">{{ k.cause_flight }}</a>{% else %}runway slots{% endif %}</td>
-      <td>{{ k.old_etd }} → <span class="late">{{ k.new_etd }}</span></td>
+      <td>{{ k.old_etd|when }} → <span class="late">{{ k.new_etd|when }}</span></td>
       <td>+{{ k.minutes_added }} min</td>
     </tr>
     {% else %}
@@ -100,4 +103,6 @@
     {% endfor %}
   </tbody>
 </table>
+
+{{ all_columns('flight', record) }}
 {% endblock %}

@@ -2,19 +2,23 @@
 {% from "_status.html" import status_badge, times %}
 {% block title %}{{ airport.iata_code }} board{% endblock %}
 {% block content %}
-<div class="page-header">
-  <h1>{{ airport.city }} ({{ airport.iata_code }}) — flight board</h1>
-  <form method="get" class="form-inline">
-    <select name="date" onchange="this.form.submit()">
-      {% for d in dates %}<option value="{{ d }}" {% if d|string == day %}selected{% endif %}>{{ d.strftime('%a %d %b') }}</option>{% endfor %}
-    </select>
-    <a class="btn btn-ghost" href="{{ url_for('airports.list_view') }}">All airports</a>
-  </form>
-</div>
-<p class="hint">
-  {% if airport.open_time is not none %}Open {{ airport.open_time|hhmm }}–{{ airport.close_time|hhmm }}{% else %}Open 24 h{% endif %}
-  · {{ airport.runway_slots_per_hour }} departures/hour · turnaround {{ airport.min_turnaround_min }} min · min connection {{ airport.min_connect_min }} min
-</p>
+<header class="headline-block">
+  <h1>{{ airport.city }}</h1>
+  <div>
+    <span class="label">{{ airport.iata_code }} flight board</span>
+    <p>{% if airport.open_time is not none %}Open {{ airport.open_time|hhmm }} to {{ airport.close_time|hhmm }}{% else %}Open 24 hours{% endif %},
+      {{ airport.runway_slots_per_hour }} departures an hour, {{ airport.min_turnaround_min }} min aircraft turnaround,
+      {{ airport.min_connect_min }} min passenger connections.</p>
+    <div class="actions"><a class="btn btn-ghost" href="{{ url_for('airports.list_view') }}">All airports</a></div>
+  </div>
+</header>
+
+<nav class="dots" aria-label="Day">
+  {% for d in dates %}
+  <a class="dot-link" href="{{ url_for('airports.board', airport_id=airport.airport_id, date=d) }}"
+     {% if d|string == day %}aria-current="date"{% endif %}>{{ d.strftime('%a %d') }}</a>
+  {% endfor %}
+</nav>
 
 <div class="grid-2">
   <div>

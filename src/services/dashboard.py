@@ -36,3 +36,13 @@ def recent_delays(limit=10):
            LIMIT %s""",
         (limit,),
     )
+
+
+def network_routes():
+    """Undirected airport pairs with at least one scheduled flight, for the
+    dashboard's network constellation."""
+    return query(
+        """SELECT DISTINCT LEAST(r.origin_airport_id, r.dest_airport_id) AS a,
+                           GREATEST(r.origin_airport_id, r.dest_airport_id) AS b
+           FROM route r WHERE EXISTS (SELECT 1 FROM flight f WHERE f.route_id = r.route_id)"""
+    )

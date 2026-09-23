@@ -5,6 +5,7 @@ from src.routes.helpers import db_action
 from src.services import bookings as bookings_service
 from src.services import passengers as passengers_service
 from src.services import flights as flights_service
+from src.services import schema_info
 
 bp = Blueprint("bookings", __name__)
 
@@ -28,6 +29,7 @@ def detail(booking_id):
         booking=booking,
         tickets=bookings_service.tickets_for_booking(booking_id),
         flights=flights_service.list_flights(),
+        record=schema_info.record("booking", "booking_id", booking_id),
     )
 
 

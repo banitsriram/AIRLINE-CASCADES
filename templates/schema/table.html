@@ -30,5 +30,8 @@
     {% endfor %}
   </tbody>
 </table>
-<p><a href="{{ url_for('schema.index') }}">← Back to schema</a></p>
+<div class="actions">
+  <a class="btn btn-ghost" href="{{ url_for('schema.rows', table_name=table_name) }}">See every row</a>
+  <a class="btn btn-ghost" href="{{ url_for('schema.index') }}">All tables</a>
+</div>
 {% endblock %}

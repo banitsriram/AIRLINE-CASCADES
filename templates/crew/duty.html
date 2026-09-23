@@ -8,7 +8,7 @@
     {% for d in duty %}
     <tr>
       <td>{{ d.name }}</td>
-      <td>{{ d.role }}</td>
+      <td>{{ d.role|human }}</td>
       <td>{{ d.hours_on_duty }}</td>
       <td>{{ d.hours_flown }}</td>
       <td>{{ d.hours_remaining }}</td>

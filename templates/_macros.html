@@ -3,6 +3,7 @@
     <span>{{ label }}{% if required %} *{% endif %}</span>
     {% if type == 'select' %}
       <select name="{{ name }}" {% if required %}required{% endif %}>
+        {% if not required %}<option value="">--</option>{% endif %}
         {% for opt in options %}
           <option value="{{ opt }}" {% if value == opt %}selected{% endif %}>{{ opt }}</option>
         {% endfor %}
@@ -15,7 +16,33 @@
         {% endfor %}
       </select>
     {% else %}
-      <input type="{{ type }}" name="{{ name }}" value="{{ value if value is not none else '' }}" {% if required %}required{% endif %}>
+      <input type="{{ type }}" name="{{ name }}" value="{{ value if value is not none else '' }}" {% if type == 'number' %}step="any"{% endif %} {% if required %}required{% endif %}>
     {% endif %}
   </label>
+{% endmacro %}
+
+{# Section Headline Block (DESIGN.md): oversized headline left; amber label,
+   light body copy and the page's actions on the right. #}
+{% macro headline(title, label, body) %}
+<header class="headline-block">
+  <h1>{{ title }}</h1>
+  <div>
+    <span class="label">{{ label }}</span>
+    <p>{{ body }}</p>
+    {% if caller %}<div class="actions">{{ caller() }}</div>{% endif %}
+  </div>
+</header>
+{% endmacro %}
+
+{# Every column of the underlying row, read with SELECT *, so columns added by
+   ALTER TABLE appear here without any template change. #}
+{% macro all_columns(table, record) %}
+{% if record %}
+<details class="record">
+  <summary>All {{ record|length }} columns in <code>{{ table }}</code></summary>
+  <dl class="detail-grid">
+    {% for key, value in record.items() %}<dt>{{ key }}</dt><dd>{% if value is none %}<span class="muted">NULL</span>{% else %}{{ value }}{% endif %}</dd>{% endfor %}
+  </dl>
+</details>
+{% endif %}
 {% endmacro %}

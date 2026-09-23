@@ -1,22 +1,23 @@
 {% extends "base.html" %}
+{% from "_macros.html" import headline %}
 {% from "_status.html" import status_badge, times %}
 {% block title %}Flights{% endblock %}
 {% block content %}
-<div class="page-header">
-  <h1>Flights <span class="muted">({{ flights|length }})</span></h1>
-  <a class="btn" href="{{ url_for('flights.new') }}">+ New Flight</a>
-</div>
+{% call headline('Flights', '{:,}'.format(flights|length) ~ (' flight' if flights|length == 1 else ' flights') ~ ' shown',
+                  'Every scheduled leg across the network, with its scheduled and estimated times. Press Delay on any upcoming flight to file one.') %}
+  <a class="btn" href="{{ url_for('flights.new') }}">New flight</a>
+{% endcall %}
 
 <form method="get" class="filter-bar">
   <input type="search" name="q" value="{{ q or '' }}" placeholder="Flight no., airport (DEL) or aircraft">
   <select name="status">
     <option value="">All statuses</option>
-    {% for s in ['DELAYED','SCHEDULED','BOARDING','DEPARTED','ARRIVED','CANCELLED','DIVERTED'] %}
-    <option value="{{ s }}" {% if status == s %}selected{% endif %}>{{ s }}</option>
+    {% for s in ['DELAYED'] + enum_values('flight', 'status') %}
+    <option value="{{ s }}" {% if status == s %}selected{% endif %}>{{ s|human }}</option>
     {% endfor %}
   </select>
   <input type="date" name="date" value="{{ date or '' }}">
-  <button type="submit" class="btn">Filter</button>
+  <button type="submit" class="btn btn-ghost">Filter</button>
   {% if q or status or date %}<a class="btn btn-ghost" href="{{ url_for('flights.list_view') }}">Clear</a>{% endif %}
 </form>
 

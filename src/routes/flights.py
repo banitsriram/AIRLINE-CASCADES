@@ -1,11 +1,12 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 import mysql.connector
 
-from src.routes.delays import notice_from_form, PHASES, OPS_STATUSES
+from src.routes.delays import notice_from_form
 from src.routes.helpers import db_action
 from src.services import delays as delays_service
 from src.services import flights as flights_service
 from src.services import lookups
+from src.services import schema_info
 
 bp = Blueprint("flights", __name__)
 
@@ -32,6 +33,7 @@ def detail(flight_id):
         delays=flights_service.delays_for_flight(flight_id),
         knock_on=flights_service.knock_on_for_flight(flight_id),
         all_crew=lookups.crew(),
+        record=schema_info.record("flight", "flight_id", flight_id),
     )
 
 
@@ -114,6 +116,6 @@ def delay(flight_id):
         codes=lookups.delay_codes(),
         gates=lookups.gates(flight["origin_airport_id"]),
         aircraft=lookups.aircraft(),
-        phases=PHASES,
-        ops_statuses=OPS_STATUSES,
+        phases=lookups.enum_values("flight_delay", "phase"),
+        ops_statuses=lookups.enum_values("flight_delay", "ops_status"),
     )

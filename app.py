@@ -1,6 +1,9 @@
-from flask import Flask
+from flask import Flask, render_template
+import mysql.connector
 
 from src.config import Settings
+from src.db import query
+from src.services.lookups import enum_values
 from src.routes import (
     admin,
     airports,
@@ -31,6 +34,49 @@ def create_app():
     app.register_blueprint(schema.bp, url_prefix="/schema")
     app.register_blueprint(delays.bp, url_prefix="/delays")
     app.register_blueprint(airports.bp, url_prefix="/airports")
+
+    app.jinja_env.globals["enum_values"] = enum_values
+
+    @app.errorhandler(mysql.connector.Error)
+    def database_error(err):
+        """A table was changed by hand in a way this page depends on (a dropped or
+        renamed column, a missing table...). Say exactly what MySQL reported."""
+        return render_template("error.html", title="The database rejected this page",
+                               message=err.msg, code=err.errno), 500
+
+    @app.errorhandler(404)
+    def not_found(err):
+        return render_template("error.html", title="Nothing here",
+                               message="That page or record doesn't exist. It may have been deleted.", code=404), 404
+
+    @app.context_processor
+    def nav_counts():
+        """Late-flight count shown in the nav on every page. If the flight table
+        has been altered so this can't run, the nav just omits it (the page's own
+        error, if any, is reported by database_error)."""
+        try:
+            return {"delayed_now": query(
+                "SELECT COUNT(*) AS n FROM flight WHERE delay_minutes > 0 AND status IN ('SCHEDULED', 'BOARDING', 'DEPARTED')"
+            )[0]["n"]}
+        except mysql.connector.Error:
+            return {"delayed_now": 0}
+
+    @app.template_filter("human")
+    def human(value):
+        """Database enum values for display: FIRST_OFFICER -> First officer, ATC stays ATC."""
+        if not value:
+            return value
+        text = str(value)
+        return text if len(text) <= 3 else text.replace("_", " ").capitalize()
+
+    @app.template_filter("when")
+    def when(value):
+        """Datetimes as 'Wed 23 Sep, 18:28'; dates as 'Wed 23 Sep 2026'; anything else unchanged."""
+        if hasattr(value, "hour"):
+            return value.strftime("%a %d %b, %H:%M")
+        if hasattr(value, "strftime"):
+            return value.strftime("%a %d %b %Y")
+        return value
 
     @app.template_filter("hhmm")
     def hhmm(value):

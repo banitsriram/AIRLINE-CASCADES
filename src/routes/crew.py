@@ -3,6 +3,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from src.routes.helpers import db_action
 from src.services import crew as crew_service
 from src.services import lookups
+from src.services import schema_info
 
 bp = Blueprint("crew", __name__)
 
@@ -38,6 +39,7 @@ def detail(crew_id):
         crew=member,
         certs=crew_service.certifications(crew_id),
         aircraft_types=lookups.aircraft_types(),
+        record=schema_info.record("crew", "crew_id", crew_id),
     )
 
 

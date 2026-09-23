@@ -9,7 +9,9 @@ SELECT f.flight_id, f.flight_number, f.status, f.delay_minutes, f.parent_flight_
        DATE_ADD(f.sched_departure, INTERVAL f.delay_minutes MINUTE) AS etd,
        DATE_ADD(f.sched_arrival, INTERVAL f.delay_minutes MINUTE) AS eta,
        f.boarding_start, f.actual_departure, f.actual_arrival,
-       CASE WHEN f.status IN ('CANCELLED', 'DEPARTED', 'ARRIVED', 'DIVERTED', 'BOARDING') THEN f.status
+       -- Any status other than SCHEDULED is shown as-is, so a value added to the
+       -- ENUM later (ALTER TABLE) appears without changing this view.
+       CASE WHEN f.status <> 'SCHEDULED' THEN f.status
             WHEN f.delay_minutes > 0 THEN 'DELAYED'
             ELSE 'ON TIME' END AS display_status
 FROM flight f

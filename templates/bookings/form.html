@@ -22,7 +22,7 @@
     </select>
   </label>
   {{ field('seat_no', 'Seat No.', '', required=True) }}
-  {{ field('ticket_class', 'Class', '', type='select', options=['ECONOMY','PREMIUM','BUSINESS','FIRST'], required=True) }}
+  {{ field('ticket_class', 'Class', '', type='select', options=enum_values('ticket', 'class'), required=True) }}
   {{ field('fare', 'Fare', '', type='number', required=True) }}
   <button type="submit" class="btn">Book</button>
 </form>

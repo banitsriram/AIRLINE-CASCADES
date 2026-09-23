@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% from "_macros.html" import field %}
-{% block title %}{{ 'Edit' if row else 'New' }} {{ cfg.label }}{% endblock %}
+{% block title %}{{ 'Edit' if row else 'New' }} {{ cfg.item }}{% endblock %}
 {% block content %}
-<h1>{{ 'Edit' if row else 'New' }} {{ cfg.label }}</h1>
+<h1>{{ 'Edit' if row else 'New' }} {{ cfg.item }}</h1>
 <form method="post" class="form">
-  {% for f in cfg.fields %}
+  {% for f in fields %}
     {% if f.type == 'fk' %}
       {{ field(f.name, f.label, row[f.name] if row else '', type='fk', options=fk_options[f.name], required=f.required) }}
     {% elif f.type == 'select' %}
@@ -13,12 +13,14 @@
       {{ field(f.name, f.label, (row[f.name]|string)[:16] if row and row[f.name] else '', type='datetime-local', required=f.required) }}
     {% elif f.type == 'time' %}
       {{ field(f.name, f.label, row[f.name]|hhmm if row else '', type='time', required=f.required) }}
+    {% elif f.type == 'date' %}
+      {{ field(f.name, f.label, (row[f.name]|string) if row and row[f.name] else '', type='date', required=f.required) }}
     {% elif f.type == 'number' %}
       {{ field(f.name, f.label, row[f.name] if row else '', type='number', required=f.required) }}
     {% else %}
       {{ field(f.name, f.label, row[f.name] if row else '', required=f.required) }}
     {% endif %}
   {% endfor %}
-  <button type="submit" class="btn">Save</button>
+  <button type="submit" class="btn">Save {{ cfg.item }}</button>
 </form>
 {% endblock %}

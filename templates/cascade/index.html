@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Cascade Simulator{% endblock %}
+{% from "_macros.html" import headline %}
+{% block title %}Cascade trace{% endblock %}
 {% block content %}
-<h1>Cascade Simulator</h1>
-<div class="page-header">
-  <p>Pick a flight to view its cascade tree. To file a delay, press <strong>Delay</strong> on a flight.</p>
+{% call headline('Cascade trace', '{:,}'.format(flights|length) ~ ' flights',
+                  'Follow a delay downstream: pick a flight to see every flight it held up, level by level, through a recursive query.') %}
   <a class="btn btn-danger" href="{{ url_for('delays.reset') }}">Reset all delays</a>
-</div>
+{% endcall %}
 <table class="data-table">
   <thead><tr><th>Flight</th><th>Route</th><th>Departure</th><th>Delay</th><th></th></tr></thead>
   <tbody>
@@ -13,7 +13,7 @@
     <tr>
       <td>{{ f.flight_number }}</td>
       <td>{{ f.origin }} → {{ f.dest }}</td>
-      <td>{{ f.sched_departure }}</td>
+      <td>{{ f.sched_departure|when }}</td>
       <td>{{ f.delay_minutes }} min</td>
       <td><a class="btn btn-small" href="{{ url_for('cascade.trace', flight_id=f.flight_id) }}">Trace</a></td>
     </tr>

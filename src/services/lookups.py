@@ -1,5 +1,7 @@
 """Shared dropdown lookups. Every function returns rows shaped {id, label}."""
 
+import re
+
 from src.db import query
 
 
@@ -38,7 +40,7 @@ def routes():
 
 def crew():
     return query(
-        "SELECT crew_id AS id, CONCAT(name, ' (', role, ')') AS label "
+        "SELECT crew_id AS id, CONCAT(name, ', ', LOWER(REPLACE(role, '_', ' '))) AS label "
         "FROM crew WHERE terminated_at IS NULL ORDER BY name"
     )
 
@@ -60,3 +62,16 @@ def delay_codes():
            FROM delay_code dc JOIN delay_reason dr ON dr.reason_id = dc.reason_id
            ORDER BY dr.category, dc.iata_code"""
     )
+
+
+def enum_values(table, column):
+    """The column's ENUM members, read live from information_schema, so an
+    ALTER TABLE ... MODIFY ... ENUM(...) shows up in every dropdown at once."""
+    rows = query(
+        """SELECT column_type AS ctype FROM information_schema.columns
+           WHERE table_schema = DATABASE() AND table_name = %s AND column_name = %s""",
+        (table, column),
+    )
+    if not rows or not rows[0]["ctype"].lower().startswith("enum("):
+        return []
+    return [v.replace("''", "'") for v in re.findall(r"'((?:[^']|'')*)'", rows[0]["ctype"])]

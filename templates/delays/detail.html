@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import all_columns %}
 {% from "_status.html" import status_badge %}
 {% block title %}Delay #{{ notice.delay_id }} impact{% endblock %}
 {% block content %}
@@ -27,12 +28,12 @@
 
 <h2>Notice</h2>
 <dl class="detail-grid">
-  <dt>Reason</dt><dd>{{ notice.category }} · IATA {{ notice.iata_code }} — {{ notice.code_description }}</dd>
+  <dt>Reason</dt><dd>{{ notice.category|human }}, IATA {{ notice.iata_code }}: {{ notice.code_description }}</dd>
   <dt>Details</dt><dd>{{ notice.sub_reason or '—' }}</dd>
-  <dt>Phase / status</dt><dd>{{ notice.phase|replace('_', ' ')|title }} · {{ notice.ops_status|replace('_', ' ') }}</dd>
-  <dt>Flight now</dt><dd>{{ status_badge(notice.display_status) }} STD {{ notice.std }} → ETD <strong class="late">{{ notice.etd }}</strong>, ETA {{ notice.eta }}</dd>
+  <dt>Phase / status</dt><dd>{{ notice.phase|human }}, {{ notice.ops_status|human|lower }}</dd>
+  <dt>Flight now</dt><dd>{{ status_badge(notice.display_status) }} STD {{ notice.std|when }} → ETD <strong class="late">{{ notice.etd|when }}</strong>, ETA {{ notice.eta|when }}</dd>
   <dt>Gate change</dt><dd>{{ notice.new_gate_code or 'No' }}</dd>
-  <dt>New boarding time</dt><dd>{{ notice.new_boarding_time or '—' }}</dd>
+  <dt>New boarding time</dt><dd>{{ (notice.new_boarding_time|when) or '—' }}</dd>
   <dt>Aircraft swap</dt><dd>{{ notice.swap_registration or 'No' }}</dd>
   <dt>Passengers deboarded</dt><dd>{{ 'Yes' if notice.pax_deboarded else 'No' }}</dd>
   <dt>Announcement</dt><dd>{{ notice.announcement or '—' }}</dd>
@@ -42,15 +43,16 @@
     {% if notice.rebooking_offered %}<span class="badge">Free rebooking</span>{% endif %}
     {% if not (notice.meal_voucher or notice.compensation_eligible or notice.rebooking_offered) %}—{% endif %}
   </dd>
-  <dt>Reported by</dt><dd>{{ notice.reported_by or '—' }} at {{ notice.recorded_at }}</dd>
+  <dt>Reported by</dt><dd>{{ notice.reported_by or '—' }} at {{ notice.recorded_at|when }}</dd>
   <dt>Remarks</dt><dd>{{ notice.remarks or '—' }}</dd>
-  <dt>Resolved</dt><dd>{{ notice.resolved_at or 'Open' }}</dd>
+  <dt>Resolved</dt><dd>{{ (notice.resolved_at|when) or 'Open' }}</dd>
 </dl>
 
 <h2>Knock-on effects across the network</h2>
 <p class="hint">
   {% for link, n in by_link|dictsort %}<span class="badge badge-link-{{ link|lower }}">{{ link }} × {{ n }}</span> {% endfor %}
-  AIRCRAFT = same plane's next leg · CREW = crew connecting from a late flight · GATE = gate still occupied · SLOT = runway departures per hour full
+</p>
+<p class="hint">Aircraft: the same plane's next leg. Crew: waiting for crew arriving on a late flight. Gate: the gate is still occupied. Slot: the airport's departures for that hour are full.
 </p>
 <table class="data-table">
   <thead><tr><th>Pass</th><th>Flight</th><th>Route</th><th>Aircraft</th><th>Link</th><th>Caused by</th><th>ETD before</th><th>ETD after</th><th>Added</th><th>Total delay now</th></tr></thead>
@@ -63,8 +65,8 @@
       <td>{{ i.registration }}</td>
       <td><span class="badge badge-link-{{ i.link|lower }}">{{ i.link }}</span></td>
       <td>{% if i.cause_flight_id %}<a href="{{ url_for('flights.detail', flight_id=i.cause_flight_id) }}">{{ i.cause_flight }}</a>{% else %}{{ i.origin }} runway{% endif %}</td>
-      <td>{{ i.old_etd }}</td>
-      <td class="late">{{ i.new_etd }}</td>
+      <td>{{ i.old_etd|when }}</td>
+      <td class="late">{{ i.new_etd|when }}</td>
       <td>+{{ i.minutes_added }}</td>
       <td>{{ i.delay_minutes }} min</td>
     </tr>
@@ -82,8 +84,8 @@
     <tr>
       <td><a href="{{ url_for('bookings.detail', booking_id=m.booking_id) }}">{{ m.pnr }}</a></td>
       <td>{{ m.passenger_name }}</td>
-      <td>{{ m.in_flight }}</td><td>{{ m.in_eta }}</td>
-      <td>{{ m.out_flight }}</td><td>{{ m.out_etd }}</td>
+      <td>{{ m.in_flight }}</td><td>{{ m.in_eta|when }}</td>
+      <td>{{ m.out_flight }}</td><td>{{ m.out_etd|when }}</td>
       <td>{{ m.connect_airport }}</td>
       <td class="late">{{ m.connect_min }} min (needs {{ m.min_connect_min }})</td>
     </tr>
@@ -100,7 +102,7 @@
       <thead><tr><th>Crew</th><th>Role</th><th>Date</th><th>Duty</th></tr></thead>
       <tbody>
         {% for d in summary.duty %}
-        <tr><td><a href="{{ url_for('crew.detail', crew_id=d.crew_id) }}">{{ d.name }}</a></td><td>{{ d.role }}</td><td>{{ d.duty_date }}</td><td class="late">{{ d.duty_hours }} h</td></tr>
+        <tr><td><a href="{{ url_for('crew.detail', crew_id=d.crew_id) }}">{{ d.name }}</a></td><td>{{ d.role|human }}</td><td>{{ d.duty_date|when }}</td><td class="late">{{ d.duty_hours }} h</td></tr>
         {% else %}
         <tr><td colspan="4">None.</td></tr>
         {% endfor %}
@@ -113,7 +115,7 @@
       <thead><tr><th>Flight</th><th>Side</th><th>Airport</th><th>Time</th><th>Open</th></tr></thead>
       <tbody>
         {% for c in summary.curfew %}
-        <tr><td>{{ c.flight_number }}</td><td>{{ c.side|title }}</td><td>{{ c.airport }}</td><td class="late">{{ c.at_time }}</td><td>{{ c.open_time|hhmm }}–{{ c.close_time|hhmm }}</td></tr>
+        <tr><td>{{ c.flight_number }}</td><td>{{ c.side|title }}</td><td>{{ c.airport }}</td><td class="late">{{ c.at_time|when }}</td><td>{{ c.open_time|hhmm }}–{{ c.close_time|hhmm }}</td></tr>
         {% else %}
         <tr><td colspan="5">None.</td></tr>
         {% endfor %}
@@ -121,4 +123,6 @@
     </table>
   </div>
 </div>
+
+{{ all_columns('flight_delay', record) }}
 {% endblock %}

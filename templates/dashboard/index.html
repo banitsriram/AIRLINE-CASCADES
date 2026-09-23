@@ -1,47 +1,71 @@
 {% extends "base.html" %}
-{% block title %}Dashboard — Airline Cascades{% endblock %}
+{% block title %}Operations{% endblock %}
 {% block content %}
-<h1>Operations dashboard</h1>
+<section class="hero">
+  <div>
+    {% if summary.delayed_now %}
+    <h1>{{ summary.delayed_now }} {{ 'flight' if summary.delayed_now == 1 else 'flights' }} running late.</h1>
+    {% else %}
+    <h1>Every flight on schedule.</h1>
+    {% endif %}
+    <span class="label">{{ today.strftime('%A %d %B') }}</span>
+    <p>{{ '{:,}'.format(summary.flights_this_week) }} flights across {{ airports|length }} airports this week.
+      A late flight holds up its aircraft's next legs, the crew waiting for it, the gate it sits at and the
+      runway slot it needed. File a delay and see how far it reaches.</p>
+    <a class="btn" href="{{ url_for('flights.list_view', status='SCHEDULED') }}">File a delay</a>
+  </div>
+  <div class="hero-visual">
+  <div class="constellation" id="constellation"
+       data-airports='{{ network|tojson }}' data-routes='{{ network_routes|tojson }}'>
+    <canvas aria-hidden="true"></canvas>
+    <div class="constellation-tip" aria-hidden="true"></div>
+  </div>
+  <p class="hint constellation-legend">Hover an airport to trace its routes; click to open its board.</p>
+  </div>
+</section>
+
 <div class="stat-grid">
-  <div class="stat-card"><span class="stat-value">{{ summary.flights_today }}</span><span class="stat-label">Flights today</span></div>
-  <div class="stat-card"><span class="stat-value">{{ summary.flights_this_week }}</span><span class="stat-label">Flights this week</span></div>
-  <div class="stat-card"><span class="stat-value {% if summary.delayed_now %}late{% endif %}">{{ summary.delayed_now }}</span><span class="stat-label">Currently delayed</span></div>
-  <div class="stat-card"><span class="stat-value">{{ summary.knock_on_flights }}</span><span class="stat-label">Delayed by knock-on</span></div>
-  <div class="stat-card"><span class="stat-value {% if flags.missed %}late{% endif %}">{{ flags.missed }}</span><span class="stat-label">Missed connections</span></div>
-  <div class="stat-card"><span class="stat-value {% if flags.duty %}late{% endif %}">{{ flags.duty }}</span><span class="stat-label">Crew duty breaches</span></div>
-  <div class="stat-card"><span class="stat-value {% if flags.curfew %}late{% endif %}">{{ flags.curfew }}</span><span class="stat-label">Curfew risks</span></div>
-  <div class="stat-card"><span class="stat-value">{{ summary.active_aircraft }}</span><span class="stat-label">Active aircraft</span></div>
-  <div class="stat-card"><span class="stat-value">{{ summary.confirmed_bookings }}</span><span class="stat-label">Confirmed bookings</span></div>
+  <div class="stat-card"><span class="stat-value">{{ summary.flights_today }}</span><span class="stat-label">flights today</span></div>
+  <div class="stat-card"><span class="stat-value {% if summary.delayed_now %}late{% endif %}">{{ summary.delayed_now }}</span><span class="stat-label">running late</span></div>
+  <div class="stat-card"><span class="stat-value">{{ summary.knock_on_flights }}</span><span class="stat-label">late because of another flight</span></div>
+  <div class="stat-card"><span class="stat-value {% if flags.missed %}late{% endif %}">{{ flags.missed }}</span><span class="stat-label">missed connections</span></div>
+  <div class="stat-card"><span class="stat-value {% if flags.duty %}late{% endif %}">{{ flags.duty }}</span><span class="stat-label">crew over duty limit</span></div>
+  <div class="stat-card"><span class="stat-value {% if flags.curfew %}late{% endif %}">{{ flags.curfew }}</span><span class="stat-label">curfew risks</span></div>
+  <div class="stat-card"><span class="stat-value">{{ summary.active_aircraft }}</span><span class="stat-label">aircraft in service</span></div>
+  <div class="stat-card"><span class="stat-value">{{ '{:,}'.format(summary.confirmed_bookings) }}</span><span class="stat-label">confirmed bookings</span></div>
 </div>
 
 <h2>Airport boards</h2>
-<div class="chip-row">
+<nav class="chip-row" aria-label="Airport boards">
   {% for a in airports %}
-  <a class="chip {% if a.delayed_departures %}chip-late{% endif %}" href="{{ url_for('airports.board', airport_id=a.airport_id) }}">
-    {{ a.iata_code }}{% if a.delayed_departures %} · {{ a.delayed_departures }} late{% endif %}
+  <a class="chip {% if a.delayed_departures %}chip-late{% endif %}" href="{{ url_for('airports.board', airport_id=a.airport_id) }}"
+     title="{{ a.city }}{% if a.delayed_departures %}, {{ a.delayed_departures }} late departures{% endif %}">
+    {{ a.iata_code }}{% if a.delayed_departures %} {{ a.delayed_departures }}{% endif %}
   </a>
   {% endfor %}
-</div>
+</nav>
 
 <div class="page-header">
   <h2>Recent delays</h2>
-  <a class="btn btn-ghost" href="{{ url_for('delays.list_view') }}">Delay log</a>
+  <a class="btn btn-ghost" href="{{ url_for('delays.list_view') }}">Full delay log</a>
 </div>
 <table class="data-table">
-  <thead><tr><th>Flight</th><th>Category</th><th>Minutes</th><th>Knock-on flights</th><th>Recorded</th><th></th></tr></thead>
+  <thead><tr><th>Flight</th><th>Reason</th><th>Minutes</th><th>Other flights delayed</th><th>Filed</th><th></th></tr></thead>
   <tbody>
     {% for d in recent_delays %}
     <tr>
       <td>{{ d.flight_number }}</td>
-      <td>{{ d.category }}</td>
-      <td>{{ d.minutes }}</td>
+      <td>{{ d.category|human }}</td>
+      <td class="late">+{{ d.minutes }}</td>
       <td>{{ d.knock_on }}</td>
-      <td>{{ d.recorded_at }}</td>
+      <td class="muted">{{ d.recorded_at.strftime('%d %b %H:%M') }}</td>
       <td><a class="btn btn-small" href="{{ url_for('delays.detail', delay_id=d.delay_id) }}">Impact</a></td>
     </tr>
     {% else %}
-    <tr><td colspan="6">No delays recorded yet.</td></tr>
+    <tr><td colspan="6">No delays filed. Press Delay on any flight to file one.</td></tr>
     {% endfor %}
   </tbody>
 </table>
+
+<script src="{{ url_for('static', filename='js/constellation.js') }}" defer></script>
 {% endblock %}

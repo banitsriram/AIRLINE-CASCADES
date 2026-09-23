@@ -2,12 +2,14 @@
 below are hardcoded config, never user input, so the f-string SQL is safe."""
 
 from src.db import query, execute
+from src.services.lookups import enum_values
 
 ENTITIES = {
     "airport": {
         "table": "airport",
         "pk": "airport_id",
         "label": "Airports",
+        "item": "airport",
         "order_by": "iata_code",
         "fields": [
             {"name": "iata_code", "type": "text", "required": True, "label": "IATA"},
@@ -26,6 +28,7 @@ ENTITIES = {
         "table": "gate",
         "pk": "gate_id",
         "label": "Gates",
+        "item": "gate",
         "order_by": "airport_id, terminal, gate_id",
         "fields": [
             {"name": "airport_id", "type": "fk", "required": True, "label": "Airport", "ref": "airport"},
@@ -37,6 +40,7 @@ ENTITIES = {
         "table": "aircraft_type",
         "pk": "type_id",
         "label": "Aircraft Types",
+        "item": "aircraft type",
         "order_by": "manufacturer, model",
         "fields": [
             {"name": "model", "type": "text", "required": True, "label": "Model"},
@@ -50,6 +54,7 @@ ENTITIES = {
         "table": "delay_reason",
         "pk": "reason_id",
         "label": "Delay Reasons",
+        "item": "delay reason",
         "order_by": "category",
         "fields": [
             {
@@ -66,6 +71,7 @@ ENTITIES = {
         "table": "delay_code",
         "pk": "code_id",
         "label": "IATA Delay Codes",
+        "item": "IATA delay code",
         "order_by": "iata_code",
         "fields": [
             {"name": "iata_code", "type": "text", "required": True, "label": "Code"},
@@ -77,6 +83,7 @@ ENTITIES = {
         "table": "route",
         "pk": "route_id",
         "label": "Routes",
+        "item": "route",
         "order_by": "route_id",
         "fields": [
             {"name": "origin_airport_id", "type": "fk", "required": True, "label": "Origin", "ref": "airport"},
@@ -89,6 +96,7 @@ ENTITIES = {
         "table": "aircraft",
         "pk": "aircraft_id",
         "label": "Aircraft",
+        "item": "aircraft",
         "order_by": "registration",
         "fields": [
             {"name": "registration", "type": "text", "required": True, "label": "Registration"},
@@ -107,6 +115,7 @@ ENTITIES = {
         "table": "maintenance_log",
         "pk": "maint_id",
         "label": "Maintenance Log",
+        "item": "maintenance entry",
         "order_by": "maint_start DESC",
         "fields": [
             {"name": "aircraft_id", "type": "fk", "required": True, "label": "Aircraft", "ref": "aircraft"},
@@ -138,13 +147,64 @@ def fk_options(ref):
     return query(f"SELECT {pk} AS id, {label_col} AS label FROM {table} ORDER BY {label_col}")
 
 
-def _columns(cfg):
-    return ", ".join([cfg["pk"]] + [f["name"] for f in cfg["fields"]])
+# MySQL data types -> form field types, for columns added after this config was written.
+_INPUT_TYPES = {
+    "int": "number", "bigint": "number", "smallint": "number", "tinyint": "number", "mediumint": "number",
+    "decimal": "number", "float": "number", "double": "number",
+    "date": "date", "datetime": "datetime", "timestamp": "datetime", "time": "time", "enum": "select",
+}
 
 
-def _values(cfg, data):
-    values = []
+def _q(name):
+    """Backtick-quote an identifier (names come from config or information_schema)."""
+    return "`" + name.replace("`", "``") + "`"
+
+
+def fields(entity):
+    """The configured fields that still exist, plus any column added to the table
+    since (ALTER TABLE ... ADD COLUMN), read live from information_schema.
+    ENUM options are read live too, so ALTER ... MODIFY ENUM shows up at once."""
+    cfg = ENTITIES[entity]
+    live = {
+        c["name"]: c
+        for c in query(
+            """SELECT column_name AS name, data_type AS dtype, column_type AS ctype,
+                      is_nullable AS nullable, column_default AS dflt, extra AS extra
+               FROM information_schema.columns
+               WHERE table_schema = DATABASE() AND table_name = %s
+               ORDER BY ordinal_position""",
+            (cfg["table"],),
+        )
+    }
+    out = []
     for f in cfg["fields"]:
+        if f["name"] not in live:
+            continue  # column was dropped
+        f = dict(f)
+        if f["type"] == "select":
+            f["options"] = enum_values(cfg["table"], f["name"]) or f["options"]
+        out.append(f)
+
+    known = {f["name"] for f in cfg["fields"]} | {cfg["pk"], "created_at", "updated_at"}
+    for name, c in live.items():
+        generated = "GENERATED" in c["extra"].upper() and "DEFAULT_GENERATED" not in c["extra"].upper()
+        if name in known or generated:
+            continue
+        ftype = _INPUT_TYPES.get(c["dtype"].lower(), "text")
+        out.append({
+            "name": name,
+            "type": ftype,
+            "required": c["nullable"] == "NO" and c["dflt"] is None and "auto_increment" not in c["extra"],
+            "label": name.replace("_", " ").capitalize(),
+            "options": enum_values(cfg["table"], name) if ftype == "select" else None,
+            "added": True,
+        })
+    return out
+
+
+def _values(flds, data):
+    values = []
+    for f in flds:
         v = data.get(f["name"]) or None
         if v and f["type"] == "datetime":
             v = v.replace("T", " ")
@@ -152,34 +212,36 @@ def _values(cfg, data):
     return values
 
 
-def list_rows(entity):
-    cfg = ENTITIES[entity]
-    return query(f"SELECT {_columns(cfg)} FROM {cfg['table']} ORDER BY {cfg['order_by']}")
+def _select(cfg, flds):
+    return ", ".join(_q(n) for n in [cfg["pk"]] + [f["name"] for f in flds])
 
 
-def get_row(entity, row_id):
+def list_rows(entity, flds):
     cfg = ENTITIES[entity]
-    rows = query(f"SELECT {_columns(cfg)} FROM {cfg['table']} WHERE {cfg['pk']}=%s", (row_id,))
+    return query(f"SELECT {_select(cfg, flds)} FROM {_q(cfg['table'])} ORDER BY {cfg['order_by']}")
+
+
+def get_row(entity, row_id, flds):
+    cfg = ENTITIES[entity]
+    rows = query(f"SELECT {_select(cfg, flds)} FROM {_q(cfg['table'])} WHERE {_q(cfg['pk'])}=%s", (row_id,))
     return rows[0] if rows else None
 
 
-def create_row(entity, data):
+def create_row(entity, data, flds):
     cfg = ENTITIES[entity]
-    names = [f["name"] for f in cfg["fields"]]
-    placeholders = ", ".join(["%s"] * len(names))
+    placeholders = ", ".join(["%s"] * len(flds))
     return execute(
-        f"INSERT INTO {cfg['table']} ({', '.join(names)}) VALUES ({placeholders})",
-        _values(cfg, data),
+        f"INSERT INTO {_q(cfg['table'])} ({', '.join(_q(f['name']) for f in flds)}) VALUES ({placeholders})",
+        _values(flds, data),
     )
 
 
-def update_row(entity, row_id, data):
+def update_row(entity, row_id, data, flds):
     cfg = ENTITIES[entity]
-    names = [f["name"] for f in cfg["fields"]]
-    set_clause = ", ".join([f"{n}=%s" for n in names])
+    set_clause = ", ".join(f"{_q(f['name'])}=%s" for f in flds)
     execute(
-        f"UPDATE {cfg['table']} SET {set_clause} WHERE {cfg['pk']}=%s",
-        _values(cfg, data) + [row_id],
+        f"UPDATE {_q(cfg['table'])} SET {set_clause} WHERE {_q(cfg['pk'])}=%s",
+        _values(flds, data) + [row_id],
     )
 
 
