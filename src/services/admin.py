@@ -15,6 +15,22 @@ ENTITIES = {
             {"name": "city", "type": "text", "required": True, "label": "City"},
             {"name": "country", "type": "text", "required": True, "label": "Country"},
             {"name": "timezone", "type": "text", "required": True, "label": "Timezone"},
+            {"name": "open_time", "type": "time", "required": False, "label": "Opens (curfew)"},
+            {"name": "close_time", "type": "time", "required": False, "label": "Closes (curfew)"},
+            {"name": "runway_slots_per_hour", "type": "number", "required": True, "label": "Departures / hour"},
+            {"name": "min_connect_min", "type": "number", "required": True, "label": "Min connection (min)"},
+            {"name": "min_turnaround_min", "type": "number", "required": True, "label": "Min turnaround (min)"},
+        ],
+    },
+    "gate": {
+        "table": "gate",
+        "pk": "gate_id",
+        "label": "Gates",
+        "order_by": "airport_id, terminal, gate_id",
+        "fields": [
+            {"name": "airport_id", "type": "fk", "required": True, "label": "Airport", "ref": "airport"},
+            {"name": "gate_code", "type": "text", "required": True, "label": "Gate"},
+            {"name": "terminal", "type": "text", "required": True, "label": "Terminal"},
         ],
     },
     "aircraft_type": {
@@ -44,6 +60,17 @@ ENTITIES = {
                 "options": ["WEATHER", "ATC", "TECHNICAL", "CREW", "SECURITY", "FUEL", "MAINTENANCE", "CASCADE"],
             },
             {"name": "description", "type": "text", "required": True, "label": "Description"},
+        ],
+    },
+    "delay_code": {
+        "table": "delay_code",
+        "pk": "code_id",
+        "label": "IATA Delay Codes",
+        "order_by": "iata_code",
+        "fields": [
+            {"name": "iata_code", "type": "text", "required": True, "label": "Code"},
+            {"name": "description", "type": "text", "required": True, "label": "Description"},
+            {"name": "reason_id", "type": "fk", "required": True, "label": "Category", "ref": "delay_reason"},
         ],
     },
     "route": {
@@ -102,6 +129,7 @@ REF_LOOKUPS = {
     "airport": ("airport", "airport_id", "iata_code"),
     "aircraft_type": ("aircraft_type", "type_id", "model"),
     "aircraft": ("aircraft", "aircraft_id", "registration"),
+    "delay_reason": ("delay_reason", "reason_id", "category"),
 }
 
 

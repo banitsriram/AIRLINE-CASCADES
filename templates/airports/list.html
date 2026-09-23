@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Airports{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Airports</h1>
+  <div class="actions">
+    <a class="btn btn-ghost" href="{{ url_for('admin.list_view', entity='gate') }}">Manage gates</a>
+    <a class="btn" href="{{ url_for('admin.new', entity='airport') }}">+ New airport</a>
+  </div>
+</div>
+<p class="hint">These operating rules drive the cascade: turnaround (aircraft), slots per hour (runway), minimum connection time (passengers) and curfew hours.</p>
+<table class="data-table">
+  <thead><tr><th>Airport</th><th>City</th><th>Hours</th><th>Slots/h</th><th>Turnaround</th><th>Min connect</th><th>Gates</th><th>Departures today</th><th>Delayed</th><th></th></tr></thead>
+  <tbody>
+    {% for a in airports %}
+    <tr>
+      <td><strong>{{ a.iata_code }}</strong> <span class="muted">{{ a.icao_code }}</span></td>
+      <td>{{ a.city }}</td>
+      <td>{% if a.open_time is not none %}{{ a.open_time|hhmm }}–{{ a.close_time|hhmm }}{% else %}24 h{% endif %}</td>
+      <td>{{ a.runway_slots_per_hour }}</td>
+      <td>{{ a.min_turnaround_min }} min</td>
+      <td>{{ a.min_connect_min }} min</td>
+      <td>{{ a.gates }}</td>
+      <td>{{ a.departures_today }}</td>
+      <td>{% if a.delayed_departures %}<span class="late">{{ a.delayed_departures }}</span>{% else %}0{% endif %}</td>
+      <td class="nowrap">
+        <a class="btn btn-small" href="{{ url_for('airports.board', airport_id=a.airport_id) }}">Board</a>
+        <a class="btn btn-small btn-ghost" href="{{ url_for('admin.edit', entity='airport', row_id=a.airport_id) }}">Edit</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

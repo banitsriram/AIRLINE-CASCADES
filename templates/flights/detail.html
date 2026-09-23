@@ -1,9 +1,13 @@
 {% extends "base.html" %}
+{% from "_status.html" import status_badge %}
 {% block title %}Flight {{ flight.flight_number }}{% endblock %}
 {% block content %}
 <div class="page-header">
   <h1>{{ flight.flight_number }} — {{ flight.origin }} → {{ flight.dest }}</h1>
   <div class="actions">
+    {% if flight.status in ('SCHEDULED', 'BOARDING', 'DEPARTED') %}
+    <a class="btn btn-warn" href="{{ url_for('flights.delay', flight_id=flight.flight_id) }}">Delay</a>
+    {% endif %}
     <a class="btn" href="{{ url_for('flights.edit', flight_id=flight.flight_id) }}">Edit</a>
     <a class="btn" href="{{ url_for('cascade.trace', flight_id=flight.flight_id) }}">Cascade Trace</a>
     <a class="btn" href="{{ url_for('crew.replacement', flight_id=flight.flight_id) }}">Find Replacement Crew</a>
@@ -14,14 +18,17 @@
 </div>
 
 <dl class="detail-grid">
+  <dt>Route</dt><dd>{{ flight.origin_city }} ({{ flight.origin }}) → {{ flight.dest_city }} ({{ flight.dest }})</dd>
   <dt>Aircraft</dt><dd>{{ flight.registration }}</dd>
-  <dt>Status</dt><dd>{{ flight.status }}</dd>
-  <dt>Scheduled departure</dt><dd>{{ flight.sched_departure }}</dd>
-  <dt>Scheduled arrival</dt><dd>{{ flight.sched_arrival }}</dd>
-  <dt>Actual departure</dt><dd>{{ flight.actual_departure or '—' }}</dd>
-  <dt>Actual arrival</dt><dd>{{ flight.actual_arrival or '—' }}</dd>
-  <dt>Delay</dt><dd>{{ flight.delay_minutes }} min</dd>
-  <dt>Parent flight (cascade source)</dt><dd>{{ flight.parent_flight_id or '—' }}</dd>
+  <dt>Gate</dt><dd>{{ flight.gate_code or '—' }}</dd>
+  <dt>Status</dt><dd>{{ status_badge(flight.display_status) }}</dd>
+  <dt>Scheduled departure / arrival</dt><dd>{{ flight.std }} / {{ flight.sta }}</dd>
+  <dt>Estimated departure / arrival</dt><dd>{% if flight.delay_minutes %}<strong class="late">{{ flight.etd }} / {{ flight.eta }}</strong>{% else %}On time{% endif %}</dd>
+  <dt>Boarding / gate close</dt><dd>{{ flight.boarding_start or '—' }} / {{ flight.gate_close or '—' }}</dd>
+  <dt>Actual departure / arrival</dt><dd>{{ flight.actual_departure or '—' }} / {{ flight.actual_arrival or '—' }}</dd>
+  <dt>Total delay</dt><dd>{{ flight.delay_minutes }} min</dd>
+  <dt>Knock-on source</dt><dd>{% if flight.parent_flight_id %}<a href="{{ url_for('flights.detail', flight_id=flight.parent_flight_id) }}">flight #{{ flight.parent_flight_id }}</a>{% else %}—{% endif %}</dd>
+  <dt>Remarks</dt><dd>{{ flight.remarks or '—' }}</dd>
 </dl>
 
 <h2>Crew assigned</h2>
@@ -55,14 +62,41 @@
   <button type="submit" class="btn">Assign</button>
 </form>
 
-<h2>Delay history</h2>
+<h2>Delays filed on this flight</h2>
 <table class="data-table">
-  <thead><tr><th>Category</th><th>Reason</th><th>Minutes</th><th>Recorded</th></tr></thead>
+  <thead><tr><th>#</th><th>Reason</th><th>Details</th><th>Minutes</th><th>Status</th><th>Reported</th><th></th></tr></thead>
   <tbody>
     {% for d in delays %}
-    <tr><td>{{ d.category }}</td><td>{{ d.description }}</td><td>{{ d.minutes }}</td><td>{{ d.recorded_at }}</td></tr>
+    <tr>
+      <td>{{ d.delay_id }}</td>
+      <td>{{ d.category }}{% if d.iata_code %} · {{ d.iata_code }} {{ d.description }}{% endif %}</td>
+      <td>{{ d.sub_reason or '—' }}</td>
+      <td>{{ d.minutes }}</td>
+      <td>{{ d.ops_status|replace('_', ' ') }}{% if d.resolved_at %} · resolved{% endif %}</td>
+      <td>{{ d.reported_by or '—' }}<br><span class="muted">{{ d.recorded_at }}</span></td>
+      <td><a class="btn btn-small" href="{{ url_for('delays.detail', delay_id=d.delay_id) }}">Impact</a></td>
+    </tr>
     {% else %}
-    <tr><td colspan="4">No delays recorded.</td></tr>
+    <tr><td colspan="7">No delays filed on this flight.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>Knock-on delay received from other flights</h2>
+<table class="data-table">
+  <thead><tr><th>Notice</th><th>Started at</th><th>Link</th><th>Caused by</th><th>ETD before → after</th><th>Added</th></tr></thead>
+  <tbody>
+    {% for k in knock_on %}
+    <tr>
+      <td><a href="{{ url_for('delays.detail', delay_id=k.delay_id) }}">#{{ k.delay_id }}</a></td>
+      <td>{{ k.source_flight }}</td>
+      <td><span class="badge badge-link-{{ k.link|lower }}">{{ k.link }}</span></td>
+      <td>{% if k.cause_flight_id %}<a href="{{ url_for('flights.detail', flight_id=k.cause_flight_id) }}">{{ k.cause_flight }}</a>{% else %}runway slots{% endif %}</td>
+      <td>{{ k.old_etd }} → <span class="late">{{ k.new_etd }}</span></td>
+      <td>+{{ k.minutes_added }} min</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6">None.</td></tr>
     {% endfor %}
   </tbody>
 </table>

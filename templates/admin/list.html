@@ -17,7 +17,7 @@
     {% for row in rows %}
     <tr>
       <td>{{ row[cfg.pk] }}</td>
-      {% for f in cfg.fields %}<td>{{ row[f.name] if row[f.name] is not none else '—' }}</td>{% endfor %}
+      {% for f in cfg.fields %}<td>{% if row[f.name] is none %}—{% elif f.type == 'time' %}{{ row[f.name]|hhmm }}{% else %}{{ row[f.name] }}{% endif %}</td>{% endfor %}
       <td>
         <a class="btn btn-small" href="{{ url_for('admin.edit', entity=entity, row_id=row[cfg.pk]) }}">Edit</a>
         <form method="post" action="{{ url_for('admin.delete', entity=entity, row_id=row[cfg.pk]) }}" onsubmit="return confirm('Delete this entry?');" class="inline-form">

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Delay log{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Delay log</h1>
+  <div class="actions">
+    <a class="btn btn-ghost" href="{{ url_for('delays.list_view', open='0' if open_only else '1') }}">{{ 'Show all' if open_only else 'Open only' }}</a>
+    <a class="btn btn-danger" href="{{ url_for('delays.reset') }}">Reset all delays</a>
+  </div>
+</div>
+<p class="hint">To file a new delay, press <strong>Delay</strong> on any flight.</p>
+<table class="data-table">
+  <thead><tr><th>#</th><th>Flight</th><th>Route</th><th>Scheduled</th><th>Reason</th><th>Minutes</th><th>Status</th><th>Knock-on</th><th>Reported</th><th></th></tr></thead>
+  <tbody>
+    {% for d in delays %}
+    <tr>
+      <td>{{ d.delay_id }}</td>
+      <td><a href="{{ url_for('flights.detail', flight_id=d.flight_id) }}">{{ d.flight_number }}</a></td>
+      <td>{{ d.origin }} → {{ d.dest }}</td>
+      <td>{{ d.std }}</td>
+      <td>{{ d.category }}{% if d.iata_code %} ({{ d.iata_code }}){% endif %}</td>
+      <td>{{ d.minutes }}</td>
+      <td>{{ d.ops_status|replace('_', ' ') }}{% if d.resolved_at %} · resolved{% endif %}</td>
+      <td>{{ d.knock_on_flights }} flights / {{ d.knock_on_minutes }} min</td>
+      <td>{{ d.reported_by or '—' }}<br><span class="muted">{{ d.recorded_at }}</span></td>
+      <td><a class="btn btn-small" href="{{ url_for('delays.detail', delay_id=d.delay_id) }}">Impact</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="10">No delays filed.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

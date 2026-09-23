@@ -15,6 +15,7 @@ WHERE cc.type_id = a.type_id
     SELECT 1 FROM crew_assignment ca
     JOIN flight f2 ON f2.flight_id = ca.flight_id
     WHERE ca.crew_id = c.crew_id
+      AND ca.unassigned_at IS NULL
       AND f2.sched_departure < f.sched_arrival
       AND f2.sched_arrival > f.sched_departure
   )

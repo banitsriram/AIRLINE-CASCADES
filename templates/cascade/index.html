@@ -2,7 +2,10 @@
 {% block title %}Cascade Simulator{% endblock %}
 {% block content %}
 <h1>Cascade Simulator</h1>
-<p>Pick a flight to view its cascade tree or simulate a new delay.</p>
+<div class="page-header">
+  <p>Pick a flight to view its cascade tree. To file a delay, press <strong>Delay</strong> on a flight.</p>
+  <a class="btn btn-danger" href="{{ url_for('delays.reset') }}">Reset all delays</a>
+</div>
 <table class="data-table">
   <thead><tr><th>Flight</th><th>Route</th><th>Departure</th><th>Delay</th><th></th></tr></thead>
   <tbody>

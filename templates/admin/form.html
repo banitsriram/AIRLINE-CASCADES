@@ -11,6 +11,8 @@
       {{ field(f.name, f.label, row[f.name] if row else '', type='select', options=f.options, required=f.required) }}
     {% elif f.type == 'datetime' %}
       {{ field(f.name, f.label, (row[f.name]|string)[:16] if row and row[f.name] else '', type='datetime-local', required=f.required) }}
+    {% elif f.type == 'time' %}
+      {{ field(f.name, f.label, row[f.name]|hhmm if row else '', type='time', required=f.required) }}
     {% elif f.type == 'number' %}
       {{ field(f.name, f.label, row[f.name] if row else '', type='number', required=f.required) }}
     {% else %}

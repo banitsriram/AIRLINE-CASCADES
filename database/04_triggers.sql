@@ -24,6 +24,7 @@ BEGIN
       SELECT ca.crew_id, DATE(NEW.actual_departure), v_flown, v_flown + 1
       FROM crew_assignment ca
       WHERE ca.flight_id = NEW.flight_id
+        AND ca.unassigned_at IS NULL
     ON DUPLICATE KEY UPDATE
       hours_flown = hours_flown + v_flown,
       hours_on_duty = hours_on_duty + v_flown + 1;
@@ -34,7 +35,7 @@ CREATE TRIGGER trg_check_duty_limit
 BEFORE INSERT ON crew_assignment
 FOR EACH ROW
 BEGIN
-  DECLARE v_current_hours DECIMAL(5,2);
+  DECLARE v_current_hours DECIMAL(5,2) DEFAULT 0;
   DECLARE v_flight_hours DECIMAL(5,2);
   DECLARE v_dep_date DATE;
 

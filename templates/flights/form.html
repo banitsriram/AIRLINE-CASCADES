@@ -15,6 +15,8 @@
   {{ field('actual_departure', 'Actual Departure', (flight.actual_departure|string)[:16] if flight.actual_departure else '', type='datetime-local') }}
   {{ field('actual_arrival', 'Actual Arrival', (flight.actual_arrival|string)[:16] if flight.actual_arrival else '', type='datetime-local') }}
   {% endif %}
+  {{ field('gate_id', 'Departure Gate', flight.gate_id if flight else '', type='fk', options=gates) }}
+  {{ field('remarks', 'Remarks', flight.remarks if flight else '') }}
   {{ field('status', 'Status', flight.status if flight else 'SCHEDULED', type='select', options=['SCHEDULED','BOARDING','DEPARTED','ARRIVED','CANCELLED','DIVERTED'], required=True) }}
   <button type="submit" class="btn">Save</button>
 </form>

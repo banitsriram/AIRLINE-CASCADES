@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Edit delay #{{ notice.delay_id }}{% endblock %}
+{% block content %}
+<h1>Edit delay #{{ notice.delay_id }} — {{ notice.flight_number }}</h1>
+<p class="hint">Timing ({{ notice.minutes }} min, IATA {{ notice.iata_code }}) is locked once the delay has cascaded. To add more time, file another delay on the flight.</p>
+<form method="post" class="form form-wide">
+  <label class="field"><span>Details / sub-reason</span><input type="text" name="sub_reason" maxlength="200" value="{{ notice.sub_reason or '' }}"></label>
+  <label class="field"><span>Public announcement</span><textarea name="announcement" rows="3" maxlength="500">{{ notice.announcement or '' }}</textarea></label>
+  <div class="checks">
+    <label class="check"><input type="checkbox" name="pax_deboarded" {% if notice.pax_deboarded %}checked{% endif %}> Passengers deboarded</label>
+    <label class="check"><input type="checkbox" name="meal_voucher" {% if notice.meal_voucher %}checked{% endif %}> Meal voucher</label>
+    <label class="check"><input type="checkbox" name="compensation_eligible" {% if notice.compensation_eligible %}checked{% endif %}> Compensation eligible</label>
+    <label class="check"><input type="checkbox" name="rebooking_offered" {% if notice.rebooking_offered %}checked{% endif %}> Free rebooking offered</label>
+  </div>
+  <label class="field"><span>Reported by *</span><input type="text" name="reported_by" maxlength="80" required value="{{ notice.reported_by or '' }}"></label>
+  <label class="field"><span>Internal remarks</span><input type="text" name="remarks" maxlength="500" value="{{ notice.remarks or '' }}"></label>
+  <button type="submit" class="btn">Save</button>
+</form>
+{% endblock %}

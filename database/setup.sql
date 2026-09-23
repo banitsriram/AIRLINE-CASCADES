@@ -4,3 +4,5 @@ SOURCE 02_seed_reference.sql;
 SOURCE 03_seed_operational.sql;
 SOURCE 04_triggers.sql;
 SOURCE 05_procedures.sql;
+SOURCE 06_views.sql;
+SOURCE 07_seed_delays.sql;

@@ -3,16 +3,8 @@
 {% block content %}
 <h1>Cascade Trace — {{ flight.flight_number }}</h1>
 
-<h2>Simulate a new delay</h2>
-<form method="post" action="{{ url_for('cascade.simulate', flight_id=flight.flight_id) }}" class="form-inline">
-  <input type="number" name="minutes" min="1" placeholder="Minutes" required>
-  <select name="reason_id" required>
-    {% for r in reasons %}
-    <option value="{{ r.id }}">{{ r.label }}</option>
-    {% endfor %}
-  </select>
-  <button type="submit" class="btn">Simulate Delay</button>
-</form>
+<p><a class="btn btn-warn" href="{{ url_for('flights.delay', flight_id=flight.flight_id) }}">File a delay on {{ flight.flight_number }}</a>
+  <span class="hint">The tree follows the aircraft and crew links recorded as each flight's knock-on source (parent_flight_id). The full impact of each delay, including runway-slot effects, is on its impact page.</span></p>
 
 <h2>Cascade tree (root: {{ flight.flight_number }})</h2>
 <table class="data-table">

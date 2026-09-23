@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "_status.html" import status_badge, times %}
+{% block title %}{{ airport.iata_code }} board{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>{{ airport.city }} ({{ airport.iata_code }}) — flight board</h1>
+  <form method="get" class="form-inline">
+    <select name="date" onchange="this.form.submit()">
+      {% for d in dates %}<option value="{{ d }}" {% if d|string == day %}selected{% endif %}>{{ d.strftime('%a %d %b') }}</option>{% endfor %}
+    </select>
+    <a class="btn btn-ghost" href="{{ url_for('airports.list_view') }}">All airports</a>
+  </form>
+</div>
+<p class="hint">
+  {% if airport.open_time is not none %}Open {{ airport.open_time|hhmm }}–{{ airport.close_time|hhmm }}{% else %}Open 24 h{% endif %}
+  · {{ airport.runway_slots_per_hour }} departures/hour · turnaround {{ airport.min_turnaround_min }} min · min connection {{ airport.min_connect_min }} min
+</p>
+
+<div class="grid-2">
+  <div>
+    <h2>Departures</h2>
+    <table class="data-table board">
+      <thead><tr><th>Time</th><th>Flight</th><th>To</th><th>Gate</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        {% for f in departures %}
+        <tr class="{% if f.display_status == 'DELAYED' %}row-delayed{% endif %}">
+          <td>{{ times(f.std, f.etd, f.delay_minutes) }}</td>
+          <td><a href="{{ url_for('flights.detail', flight_id=f.flight_id) }}">{{ f.flight_number }}</a></td>
+          <td>{{ f.dest }}</td>
+          <td>{{ f.gate_code or '—' }}</td>
+          <td>{{ status_badge(f.display_status) }}</td>
+          <td>{% if f.status in ('SCHEDULED', 'BOARDING', 'DEPARTED') %}<a class="btn btn-small btn-warn" href="{{ url_for('flights.delay', flight_id=f.flight_id) }}">Delay</a>{% endif %}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">No departures.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div>
+    <h2>Arrivals</h2>
+    <table class="data-table board">
+      <thead><tr><th>Time</th><th>Flight</th><th>From</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for f in arrivals %}
+        <tr class="{% if f.display_status == 'DELAYED' %}row-delayed{% endif %}">
+          <td>{{ times(f.sta, f.eta, f.delay_minutes) }}</td>
+          <td><a href="{{ url_for('flights.detail', flight_id=f.flight_id) }}">{{ f.flight_number }}</a></td>
+          <td>{{ f.origin }}</td>
+          <td>{{ status_badge(f.display_status) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">No arrivals.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -9,7 +9,17 @@ CREATE TABLE airport (
   city        VARCHAR(60) NOT NULL,
   country     VARCHAR(60) NOT NULL,
   timezone    VARCHAR(40) NOT NULL,
-  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+  -- Airport operating rules used by the cascade engine (simulate_delay).
+  open_time              TIME NULL,              -- curfew window; NULL/NULL = open 24h
+  close_time             TIME NULL,
+  runway_slots_per_hour  INT DEFAULT 6 NOT NULL,  -- max departures per clock hour
+  min_connect_min        INT DEFAULT 60 NOT NULL, -- minimum passenger connection time
+  min_turnaround_min     INT DEFAULT 45 NOT NULL, -- minimum aircraft ground time
+  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT chk_airport_slots CHECK (runway_slots_per_hour > 0),
+  CONSTRAINT chk_airport_mct CHECK (min_connect_min > 0),
+  CONSTRAINT chk_airport_tat CHECK (min_turnaround_min > 0),
+  CONSTRAINT chk_airport_curfew CHECK ((open_time IS NULL AND close_time IS NULL) OR open_time < close_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE aircraft_type (
@@ -33,6 +43,24 @@ CREATE TABLE delay_reason (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============= LAYER 2 =============
+
+CREATE TABLE gate (
+  gate_id     INT AUTO_INCREMENT PRIMARY KEY,
+  airport_id  INT NOT NULL,
+  gate_code   VARCHAR(6) NOT NULL,
+  terminal    VARCHAR(4) NOT NULL,
+  UNIQUE KEY uq_gate (airport_id, gate_code),
+  FOREIGN KEY (airport_id) REFERENCES airport(airport_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- IATA standard delay codes (AHM 730), each mapped to one of our 8 categories.
+CREATE TABLE delay_code (
+  code_id      INT AUTO_INCREMENT PRIMARY KEY,
+  iata_code    CHAR(2) NOT NULL UNIQUE,
+  description  VARCHAR(120) NOT NULL,
+  reason_id    INT NOT NULL,
+  FOREIGN KEY (reason_id) REFERENCES delay_reason(reason_id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE route (
   route_id           INT AUTO_INCREMENT PRIMARY KEY,
@@ -105,8 +133,10 @@ CREATE TABLE flight (
   status            ENUM('SCHEDULED','BOARDING','DEPARTED',
                          'ARRIVED','CANCELLED','DIVERTED')
                       DEFAULT 'SCHEDULED' NOT NULL,
-  delay_minutes     INT DEFAULT 0 NOT NULL,  -- DENORMALIZED: maintained by trigger
+  delay_minutes     INT DEFAULT 0 NOT NULL,  -- DENORMALIZED: maintained by simulate_delay()
   parent_flight_id  INT NULL,
+  gate_id           INT NULL,                -- departure gate
+  remarks           VARCHAR(200) NULL,
   created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   CONSTRAINT chk_flight_times CHECK (sched_arrival > sched_departure),
   -- chk_no_self_parent dropped: MySQL 8 disallows a column used in a CHECK constraint
@@ -116,6 +146,7 @@ CREATE TABLE flight (
   FOREIGN KEY (route_id)         REFERENCES route(route_id) ON DELETE RESTRICT,
   FOREIGN KEY (aircraft_id)      REFERENCES aircraft(aircraft_id) ON DELETE RESTRICT,
   FOREIGN KEY (parent_flight_id) REFERENCES flight(flight_id) ON DELETE SET NULL,
+  FOREIGN KEY (gate_id)          REFERENCES gate(gate_id) ON DELETE SET NULL,
   INDEX idx_flight_aircraft (aircraft_id),
   INDEX idx_flight_sched (sched_departure),
   INDEX idx_flight_parent (parent_flight_id),
@@ -187,16 +218,63 @@ CREATE TABLE crew_assignment (
   FOREIGN KEY (crew_id)   REFERENCES crew(crew_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- A delay notice as filed by the duty manager. The category (delay_reason) is
+-- reached through the IATA code, not stored here: code -> reason is a
+-- dependency of delay_code, so a copy on this table would break 3NF.
 CREATE TABLE flight_delay (
-  delay_id     INT AUTO_INCREMENT PRIMARY KEY,
-  flight_id    INT NOT NULL,
-  reason_id    INT NOT NULL,
-  minutes      INT NOT NULL CHECK (minutes > 0),
-  recorded_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  resolved_at  TIMESTAMP NULL,
+  delay_id               INT AUTO_INCREMENT PRIMARY KEY,
+  flight_id              INT NOT NULL,
+  code_id                INT NOT NULL,
+  minutes                INT NOT NULL CHECK (minutes >= 0),
+  sub_reason             VARCHAR(200) NULL,
+  phase                  ENUM('PRE_BOARDING','AT_GATE','TAXI','AIRBORNE')
+                           DEFAULT 'PRE_BOARDING' NOT NULL,
+  ops_status             ENUM('DELAYED','ON_HOLD','CANCELLED') DEFAULT 'DELAYED' NOT NULL,
+  new_gate_id            INT NULL,
+  new_boarding_time      DATETIME NULL,
+  pax_deboarded          BOOLEAN DEFAULT FALSE NOT NULL,
+  swap_aircraft_id       INT NULL,
+  announcement           VARCHAR(500) NULL,
+  meal_voucher           BOOLEAN DEFAULT FALSE NOT NULL,
+  compensation_eligible  BOOLEAN DEFAULT FALSE NOT NULL,
+  rebooking_offered      BOOLEAN DEFAULT FALSE NOT NULL,
+  reported_by            VARCHAR(80) NOT NULL,
+  remarks                VARCHAR(500) NULL,
+  recorded_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  resolved_at            TIMESTAMP NULL,
   CONSTRAINT chk_delay_resolve CHECK (resolved_at IS NULL OR resolved_at >= recorded_at),
-  FOREIGN KEY (flight_id) REFERENCES flight(flight_id) ON DELETE CASCADE,
-  FOREIGN KEY (reason_id) REFERENCES delay_reason(reason_id) ON DELETE RESTRICT
+  FOREIGN KEY (flight_id)        REFERENCES flight(flight_id) ON DELETE CASCADE,
+  FOREIGN KEY (code_id)          REFERENCES delay_code(code_id) ON DELETE RESTRICT,
+  FOREIGN KEY (new_gate_id)      REFERENCES gate(gate_id) ON DELETE SET NULL,
+  FOREIGN KEY (swap_aircraft_id) REFERENCES aircraft(aircraft_id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- One row per knock-on change the cascade engine made while processing a notice.
+CREATE TABLE delay_impact (
+  impact_id        INT AUTO_INCREMENT PRIMARY KEY,
+  delay_id         INT NOT NULL,
+  flight_id        INT NOT NULL,
+  cause_flight_id  INT NULL,               -- NULL for SLOT (airport congestion)
+  link             ENUM('AIRCRAFT','CREW','GATE','SLOT') NOT NULL,
+  minutes_added    INT NOT NULL CHECK (minutes_added > 0),
+  old_etd          DATETIME NOT NULL,
+  new_etd          DATETIME NOT NULL,
+  pass_no          INT NOT NULL,
+  FOREIGN KEY (delay_id)        REFERENCES flight_delay(delay_id) ON DELETE CASCADE,
+  FOREIGN KEY (flight_id)       REFERENCES flight(flight_id) ON DELETE CASCADE,
+  FOREIGN KEY (cause_flight_id) REFERENCES flight(flight_id) ON DELETE SET NULL,
+  INDEX idx_impact_delay (delay_id, pass_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Scratch table for simulate_delay(): candidate delays per pass. A regular table,
+-- not TEMPORARY, because MySQL can't open a TEMPORARY table twice in one
+-- statement (error 1137) and the engine joins it to itself. See DEVIATIONS.md.
+CREATE TABLE cascade_candidate (
+  flight_id        INT NOT NULL,
+  cause_flight_id  INT NULL,
+  link             ENUM('AIRCRAFT','CREW','GATE','SLOT') NOT NULL,
+  required_delay   INT NOT NULL,
+  INDEX idx_cand_flight (flight_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE ticket (

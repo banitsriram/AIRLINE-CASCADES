@@ -22,4 +22,10 @@ mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" < database/04_trig
 echo "==> Installing procedures"
 mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" < database/05_procedures.sql
 
+echo "==> Installing views"
+mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" < database/06_views.sql
+
+echo "==> Filing sample delays"
+mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" < database/07_seed_delays.sql
+
 echo "==> Done"

@@ -35,15 +35,28 @@ def routes():
     )
 
 
-def delay_reasons():
-    return query(
-        "SELECT reason_id AS id, CONCAT(category, ': ', description) AS label "
-        "FROM delay_reason ORDER BY category"
-    )
-
 
 def crew():
     return query(
         "SELECT crew_id AS id, CONCAT(name, ' (', role, ')') AS label "
         "FROM crew WHERE terminated_at IS NULL ORDER BY name"
+    )
+
+
+def gates(airport_id=None):
+    sql = """SELECT g.gate_id AS id, CONCAT(a.iata_code, ' ', g.gate_code, ' (', g.terminal, ')') AS label
+             FROM gate g JOIN airport a ON a.airport_id = g.airport_id"""
+    params = ()
+    if airport_id:
+        sql += " WHERE g.airport_id = %s"
+        params = (airport_id,)
+    return query(sql + " ORDER BY a.iata_code, g.terminal, g.gate_id", params)
+
+
+def delay_codes():
+    """IATA codes with their category, ordered for a grouped <select>."""
+    return query(
+        """SELECT dc.code_id AS id, dc.iata_code, dc.description, dr.category
+           FROM delay_code dc JOIN delay_reason dr ON dr.reason_id = dc.reason_id
+           ORDER BY dr.category, dc.iata_code"""
     )

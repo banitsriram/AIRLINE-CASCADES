@@ -1,9 +1,7 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, redirect, url_for, flash
 
-from src.routes.helpers import db_action
 from src.services import cascade as cascade_service
 from src.services import flights as flights_service
-from src.services import lookups
 
 bp = Blueprint("cascade", __name__)
 
@@ -24,14 +22,4 @@ def trace(flight_id):
         flight=flight,
         tree=cascade_service.analyse_cascade(flight_id),
         passengers=cascade_service.affected_passengers(flight_id),
-        reasons=lookups.delay_reasons(),
     )
-
-
-@bp.route("/<int:flight_id>/simulate", methods=["POST"])
-def simulate(flight_id):
-    with db_action("Delay simulated and cascaded downstream"):
-        cascade_service.simulate_delay(
-            flight_id, int(request.form["minutes"]), int(request.form["reason_id"])
-        )
-    return redirect(url_for("cascade.trace", flight_id=flight_id))

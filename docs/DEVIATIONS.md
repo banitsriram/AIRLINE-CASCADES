@@ -41,10 +41,11 @@ self-recursion either.
 
 The cascade is implemented instead as an iterative stored procedure,
 `simulate_delay()` (`05_procedures.sql`), invoked explicitly by the
-"Simulate Delay" action on the cascade page. Each pass of its `WHILE` loop
-extends `delay_minutes` on any flight whose scheduled departure now falls
-inside a delayed predecessor's new arrival window; the loop stops once a
-pass changes no rows (`ROW_COUNT() = 0`). `delay_minutes` only ever
+"Delay" button on each flight. Each pass of its `WHILE` loop asks four
+rules (aircraft turnaround, crew connection, gate occupancy, runway slots —
+`compute_cascade_candidates()`) what delay every not-yet-departed flight now
+requires, and raises `delay_minutes` wherever the requirement exceeds it; the
+loop stops once a pass changes no rows (`ROW_COUNT() = 0`). `delay_minutes` only ever
 increases, so the loop always terminates on its own; the 50-iteration cap
 is a defensive backstop.
 
@@ -57,3 +58,22 @@ either raises `FUNCTION db.MD5 does not exist`, even though the function
 exists on a standard MySQL build. `UUID()` has no such dependency and is
 equally suitable for generating a random 6-character PNR
 (`UPPER(SUBSTRING(REPLACE(UUID(), '-', ''), 1, 6))`).
+
+## 6. The cascade engine's scratch table is a regular table, not `TEMPORARY`
+
+Each pass of `simulate_delay()` collects every rule's requirement into
+`cascade_candidate`, then picks the largest per flight with a window
+function over that same table. MySQL can't open a `TEMPORARY` table more than
+once in one statement (error 1137, "Can't reopen table"), so it's a regular
+table that the procedure empties at the start of each pass and again before
+committing. The seed script's staging tables (`seed_leg`, `seed_team`, ...)
+are regular tables for the same reason, and are dropped at the end of the
+seed.
+
+## 7. Crew connection time and duty limit are fixed in SQL
+
+The crew rule uses a fixed 45-minute crew connection time, and
+`v_duty_breaches` a fixed 13-hour flight-duty limit (first departure to last
+arrival). Airports carry their own turnaround and passenger connection times
+because those genuinely differ by airport; crew rules are airline-wide, so a
+per-airport column would add configuration nobody changes.

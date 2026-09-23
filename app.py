@@ -3,10 +3,12 @@ from flask import Flask
 from src.config import Settings
 from src.routes import (
     admin,
+    airports,
     bookings,
     cascade,
     crew,
     dashboard,
+    delays,
     flights,
     passengers,
     reports,
@@ -27,6 +29,18 @@ def create_app():
     app.register_blueprint(reports.bp, url_prefix="/reports")
     app.register_blueprint(admin.bp, url_prefix="/admin")
     app.register_blueprint(schema.bp, url_prefix="/schema")
+    app.register_blueprint(delays.bp, url_prefix="/delays")
+    app.register_blueprint(airports.bp, url_prefix="/airports")
+
+    @app.template_filter("hhmm")
+    def hhmm(value):
+        """Formats datetimes and MySQL TIME values (timedeltas) as HH:MM."""
+        if value is None:
+            return ""
+        if hasattr(value, "strftime"):
+            return value.strftime("%H:%M")
+        minutes = int(value.total_seconds()) // 60
+        return f"{minutes // 60:02d}:{minutes % 60:02d}"
 
     return app
 

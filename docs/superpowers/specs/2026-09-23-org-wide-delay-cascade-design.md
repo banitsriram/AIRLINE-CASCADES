@@ -1,6 +1,17 @@
 # Organisation-wide delay cascade — design
 
-Date: 2026-09-23 · Status: approved in chat, awaiting spec review
+Date: 2026-09-23 · Status: implemented
+
+Changes made while building (all reflected in the code and docs):
+- `flight_delay.reason_id` was dropped; the category is reached through
+  `delay_code` (a stored copy would be a transitive dependency, breaking 3NF).
+- Crew is 400, not 120: 40 aircraft need 100 four-person teams at 2 legs each.
+- `v_duty_breaches` measures first ETD to last ETA against 13 h (block hours
+  alone never change with a delay, so they couldn't flag anything).
+- Rule evaluation is its own procedure, `compute_cascade_candidates()`, so
+  the test can check the zero-delay schedule directly.
+- Resolving a notice is a plain `UPDATE` from the app, not a procedure.
+- Delays can't be filed on ARRIVED/CANCELLED/DIVERTED flights.
 
 ## Goal
 

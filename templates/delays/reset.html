@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Reset all delays{% endblock %}
+{% block content %}
+<h1>Reset all delays?</h1>
+<p>This deletes all {{ count }} delay notices and their knock-on records, and puts every flight back on its scheduled times. Cancelled flights go back to SCHEDULED.</p>
+<p class="hint">Gate changes and aircraft swaps made by notices are kept. Run <code>bash scripts/setup_db.sh</code> for a full rebuild.</p>
+<form method="post" class="form-inline">
+  <button type="submit" class="btn btn-danger">Yes, reset everything</button>
+  <a class="btn btn-ghost" href="{{ url_for('delays.list_view') }}">Cancel</a>
+</form>
+{% endblock %}

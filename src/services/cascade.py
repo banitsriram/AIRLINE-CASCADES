@@ -1,12 +1,6 @@
 from src.db import query, call_proc
 
 
-def simulate_delay(flight_id, minutes, reason_id):
-    """Records the delay and iteratively cascades it to downstream flights
-    sharing the same aircraft (see simulate_delay() in 05_procedures.sql)."""
-    call_proc("simulate_delay", (flight_id, minutes, reason_id))
-
-
 def analyse_cascade(flight_id):
     result_sets = call_proc("analyse_cascade", (flight_id,))
     return result_sets[0] if result_sets else []

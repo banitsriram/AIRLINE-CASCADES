@@ -1,4 +1,7 @@
 SET FOREIGN_KEY_CHECKS = 0;
+DROP VIEW IF EXISTS v_missed_connections, v_duty_breaches, v_curfew_risk, v_flight_times;
+DROP TABLE IF EXISTS cascade_candidate;
+DROP TABLE IF EXISTS delay_impact;
 DROP TABLE IF EXISTS ticket;
 DROP TABLE IF EXISTS flight_delay;
 DROP TABLE IF EXISTS crew_assignment;
@@ -11,6 +14,8 @@ DROP TABLE IF EXISTS passenger;
 DROP TABLE IF EXISTS crew;
 DROP TABLE IF EXISTS aircraft;
 DROP TABLE IF EXISTS route;
+DROP TABLE IF EXISTS delay_code;
+DROP TABLE IF EXISTS gate;
 DROP TABLE IF EXISTS delay_reason;
 DROP TABLE IF EXISTS aircraft_type;
 DROP TABLE IF EXISTS airport;

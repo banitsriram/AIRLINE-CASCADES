@@ -1,0 +1,6 @@
+{% macro status_badge(s) %}<span class="badge badge-{{ s|lower|replace(' ', '-') }}">{{ s }}</span>{% endmacro %}
+{% macro times(sched, est, delay) %}
+  {%- if delay and delay > 0 -%}
+    <s class="muted">{{ sched|hhmm }}</s> <strong class="late">{{ est|hhmm }}</strong>
+  {%- else -%}{{ sched|hhmm }}{%- endif -%}
+{% endmacro %}

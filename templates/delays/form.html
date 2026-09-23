@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% from "_status.html" import status_badge %}
+{% block title %}Delay {{ flight.flight_number }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>File a delay — {{ flight.flight_number }} {{ flight.origin }} → {{ flight.dest }}</h1>
+  <a class="btn btn-ghost" href="{{ url_for('flights.detail', flight_id=flight.flight_id) }}">Back to flight</a>
+</div>
+
+<dl class="detail-grid">
+  <dt>Status</dt><dd>{{ status_badge(flight.display_status) }}</dd>
+  <dt>Aircraft</dt><dd>{{ flight.registration }}</dd>
+  <dt>Gate</dt><dd>{{ flight.gate_code or '—' }}</dd>
+  <dt>Scheduled departure</dt><dd>{{ flight.std }}</dd>
+  <dt>Current estimate (ETD / ETA)</dt><dd>{{ flight.etd }} / {{ flight.eta }}{% if flight.delay_minutes %} <span class="late">(+{{ flight.delay_minutes }} min already)</span>{% endif %}</dd>
+</dl>
+
+<form method="post" class="form form-wide" id="delay-form"
+      data-etd="{{ flight.etd.strftime('%Y-%m-%dT%H:%M') }}"
+      data-boarding="{{ flight.boarding_start.strftime('%Y-%m-%dT%H:%M') if flight.boarding_start else '' }}"
+      data-delay="{{ flight.delay_minutes }}"
+      data-flight="{{ flight.flight_number }}" data-dest="{{ flight.dest_city }}">
+
+  <fieldset>
+    <legend>Delay notice</legend>
+    <div class="grid-2">
+      <label class="field"><span>IATA delay code *</span>
+        <select name="code_id" required>
+          <option value="">— choose a reason —</option>
+          {% for cat, group in codes|groupby('category') %}
+          <optgroup label="{{ cat }}">
+            {% for c in group %}
+            <option value="{{ c.id }}" {% if values.get('code_id') == c.id|string %}selected{% endif %}>{{ c.iata_code }} — {{ c.description }}</option>
+            {% endfor %}
+          </optgroup>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="field"><span>Details / sub-reason</span>
+        <input type="text" name="sub_reason" maxlength="200" value="{{ values.get('sub_reason', '') }}" placeholder="e.g. Hydraulic leak found on walk-around">
+      </label>
+      <label class="field"><span>Delay (minutes) *</span>
+        <input type="number" name="minutes" id="minutes" min="0" max="1440" value="{{ values.get('minutes', '') }}" placeholder="e.g. 90">
+      </label>
+      <label class="field"><span>New estimated departure (ETD)</span>
+        <input type="datetime-local" name="new_etd" id="new_etd" value="{{ values.get('new_etd', '') }}">
+      </label>
+      <label class="field"><span>Phase when delay occurred *</span>
+        <select name="phase" required>
+          {% for p in phases %}<option value="{{ p }}" {% if values.get('phase') == p %}selected{% endif %}>{{ p|replace('_', ' ')|title }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="field"><span>Operational status *</span>
+        <select name="ops_status" id="ops_status" required>
+          {% for s in ops_statuses %}<option value="{{ s }}" {% if values.get('ops_status') == s %}selected{% endif %}>{{ s|replace('_', ' ') }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+    <p class="hint">New ETA: <strong id="new_eta_preview">—</strong>. Filling either minutes or ETD updates the other.</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>Operations</legend>
+    <div class="grid-2">
+      <label class="field"><span>Gate change</span>
+        <select name="new_gate_id">
+          <option value="">No change ({{ flight.gate_code or 'none' }})</option>
+          {% for g in gates %}<option value="{{ g.id }}" {% if values.get('new_gate_id') == g.id|string %}selected{% endif %}>{{ g.label }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="field"><span>New boarding time</span>
+        <input type="datetime-local" name="new_boarding_time" id="new_boarding_time" value="{{ values.get('new_boarding_time', '') }}">
+      </label>
+      <label class="field"><span>Aircraft swap</span>
+        <select name="swap_aircraft_id">
+          <option value="">No swap ({{ flight.registration }})</option>
+          {% for a in aircraft if a.id != flight.aircraft_id %}<option value="{{ a.id }}" {% if values.get('swap_aircraft_id') == a.id|string %}selected{% endif %}>{{ a.label }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" name="pax_deboarded" {% if values.get('pax_deboarded') %}checked{% endif %}> Passengers deboarded</label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Passengers</legend>
+    <label class="field"><span>Public announcement</span>
+      <textarea name="announcement" id="announcement" rows="3" maxlength="500">{{ values.get('announcement', '') }}</textarea>
+    </label>
+    <div class="checks">
+      <label class="check"><input type="checkbox" name="meal_voucher" id="meal_voucher" {% if values.get('meal_voucher') %}checked{% endif %}> Meal voucher (auto ≥ 2 h)</label>
+      <label class="check"><input type="checkbox" name="compensation_eligible" id="compensation_eligible" {% if values.get('compensation_eligible') %}checked{% endif %}> Compensation eligible (auto ≥ 3 h)</label>
+      <label class="check"><input type="checkbox" name="rebooking_offered" id="rebooking_offered" {% if values.get('rebooking_offered') %}checked{% endif %}> Free rebooking offered</label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Audit</legend>
+    <div class="grid-2">
+      <label class="field"><span>Reported by *</span>
+        <input type="text" name="reported_by" maxlength="80" required value="{{ values.get('reported_by', '') }}" placeholder="e.g. R. Mehta (Duty Manager DEL)">
+      </label>
+      <label class="field"><span>Internal remarks</span>
+        <input type="text" name="remarks" maxlength="500" value="{{ values.get('remarks', '') }}">
+      </label>
+    </div>
+  </fieldset>
+
+  <button type="submit" class="btn btn-warn">File delay &amp; cascade</button>
+</form>
+
+<script>
+(() => {
+  const form = document.getElementById("delay-form");
+  const base = new Date(form.dataset.etd);
+  const boarding = form.dataset.boarding ? new Date(form.dataset.boarding) : null;
+  const blockMs = new Date("{{ flight.eta.strftime('%Y-%m-%dT%H:%M') }}") - base;
+  const $ = (id) => document.getElementById(id);
+  const pad = (n) => String(n).padStart(2, "0");
+  const local = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const hhmm = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  let announcementEdited = $("announcement").value.trim() !== "";
+  $("announcement").addEventListener("input", () => { announcementEdited = true; });
+
+  function sync(minutes) {
+    const etd = new Date(base.getTime() + minutes * 60000);
+    $("new_eta_preview").textContent = local(new Date(etd.getTime() + blockMs)).replace("T", " ");
+    if (boarding) $("new_boarding_time").value = local(new Date(boarding.getTime() + minutes * 60000));
+    $("meal_voucher").checked = minutes >= 120;
+    $("compensation_eligible").checked = minutes >= 180;
+    if (!announcementEdited) {
+      const status = $("ops_status").value;
+      $("announcement").value = status === "CANCELLED"
+        ? `We regret to announce that flight ${form.dataset.flight} to ${form.dataset.dest} has been cancelled. Please contact the transfer desk for rebooking.`
+        : status === "ON_HOLD"
+        ? `Flight ${form.dataset.flight} to ${form.dataset.dest} is on hold. A new departure time will be announced shortly.`
+        : `Flight ${form.dataset.flight} to ${form.dataset.dest} is delayed by ${minutes} minutes. New departure time ${hhmm(etd)}. We regret the inconvenience.`;
+    }
+  }
+  $("minutes").addEventListener("input", (e) => {
+    const m = parseInt(e.target.value || "0", 10);
+    $("new_etd").value = m ? local(new Date(base.getTime() + m * 60000)) : "";
+    sync(m);
+  });
+  $("new_etd").addEventListener("input", (e) => {
+    if (!e.target.value) return;
+    const m = Math.round((new Date(e.target.value) - base) / 60000);
+    $("minutes").value = m;
+    sync(m);
+  });
+  $("ops_status").addEventListener("change", () => sync(parseInt($("minutes").value || "0", 10)));
+})();
+</script>
+{% endblock %}
