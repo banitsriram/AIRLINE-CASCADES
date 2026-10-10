@@ -76,7 +76,15 @@
   </tbody>
 </table>
 
-<h2>Missed passenger connections</h2>
+<div class="page-header">
+  <h2>Missed passenger connections</h2>
+  {% if summary.missed %}
+  <form method="post" action="{{ url_for('delays.rebook_all', delay_id=notice.delay_id) }}" class="inline-form"
+        onsubmit="return confirm('Move every stranded passenger to the next flight on their onward route?');">
+    <button type="submit" class="btn btn-ghost">Rebook all {{ summary.missed|length }}</button>
+  </form>
+  {% endif %}
+</div>
 <table class="data-table">
   <thead><tr><th>PNR</th><th>Passenger</th><th>Inbound</th><th>Arrives</th><th>Onward</th><th>Departs</th><th>At</th><th>Connection</th></tr></thead>
   <tbody>

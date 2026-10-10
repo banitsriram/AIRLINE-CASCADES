@@ -28,6 +28,10 @@ only writer of `parent_flight_id` is `simulate_delay()`, and its `JOIN`
 condition (`downstream.flight_id <> origin.flight_id`) guarantees a flight
 never becomes its own parent.
 
+The same restriction applies to `rebooking`: `old_flight_id <> new_flight_id`
+can't be a CHECK because both columns carry FK actions. Its only writer,
+`rebook_ticket()`, always selects a flight other than the ticket's current one.
+
 ## 4. The cascade is a stored procedure, not a self-updating trigger
 
 The original design called for an `AFTER UPDATE ON flight` trigger that

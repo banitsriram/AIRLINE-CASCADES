@@ -1,7 +1,8 @@
-/* Airline Cascades — built on the Refero "Dala" style reference (DESIGN.md).
-   The first :root block is the reference's CSS Custom Properties, verbatim.
-   Everything after it uses those tokens; the few app-only tokens (status
-   colours, hairlines) are declared separately under "App extensions". */
+/* Airline Cascades
+   Black canvas, white type, one violet accent for actions and amber for
+   anything late. The first :root block is the design scale (colour, type,
+   spacing, radii); the second holds the app's own tokens (status colours,
+   hairlines). Everything below reads from those. */
 
 :root {
   /* Colors */
@@ -64,9 +65,6 @@
 
   /* Layout */
   --page-max-width: 1280px;
-  --section-gap: 60-120px;
-  --card-padding: 24-38px;
-  --element-gap: 6-18px;
 
   /* Border Radius */
   --radius-3xl: 24px;
@@ -80,19 +78,15 @@
 
   /* Surfaces */
   --surface-void-canvas: #000000;
-  --surface-deep-verdant-tint: #15846;
   --surface-electric-iris: #8052ff;
 }
 
-/* ---------- App extensions (not in the reference) ----------
-   The reference's range tokens (--section-gap: 60-120px etc.) and the
-   truncated #15846 are kept verbatim above but aren't valid CSS values, so
-   nothing reads them; spacing uses the --spacing-* scale instead.
-   PPNeueMontreal is a paid face; the reference names Inter as its substitute. */
+/* ---------- App tokens ----------
+   PPNeueMontreal is used when installed; otherwise Inter (loaded in base.html). */
 :root {
   color-scheme: dark;
   --font-app: 'PPNeueMontreal', 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --tracking-display-em: -0.04em;          /* "-0.04em on all display sizes 42px and above" */
+  --tracking-display-em: -0.04em;          /* on every display size from 42px up */
   --tracking-nav-em: 0.025em;
   --color-iris-text: #a386ff;              /* iris lifted for small text on black (contrast) */
   --color-verdant-text: #3ecfae;           /* deep verdant lifted: "on time" */
@@ -111,7 +105,7 @@ body {
   color: var(--color-bone-white);
   font-family: var(--font-app);
   font-feature-settings: "ss01" on;
-  font-size: 15px;                          /* 15px body at weight 400 (reference) */
+  font-size: 15px;
   font-weight: var(--font-weight-regular);
   line-height: var(--leading-body);
   -webkit-font-smoothing: antialiased;

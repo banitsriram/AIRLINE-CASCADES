@@ -1,4 +1,4 @@
-// Ambient Particle Field (DESIGN.md): sparse outlined triangles drifting at low
+// Ambient particle field: sparse outlined triangles drifting at low
 // opacity behind every page. Skipped on the dashboard, whose constellation
 // already fills that role, and frozen when reduced motion is requested.
 (() => {

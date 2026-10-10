@@ -45,6 +45,18 @@
   {% endfor %}
 </nav>
 
+<h2>Operations clock</h2>
+<p class="hint">
+  {% if clock %}The operation has run to {{ clock|when }}.{% else %}Nothing has flown yet.{% endif %}
+  Running it forward boards, departs and lands every flight whose time has come (at its estimated
+  times), books the crew's duty hours, closes notices on flights that have left and completes
+  finished journeys. It only moves forward; rebuild the database to start over.
+</p>
+<form method="post" action="{{ url_for('dashboard.advance_clock') }}" class="form-inline">
+  <input type="datetime-local" name="until" value="{{ now.strftime('%Y-%m-%dT%H:%M') }}" required aria-label="Run the operation to">
+  <button type="submit" class="btn btn-ghost">Run to this time</button>
+</form>
+
 <div class="page-header">
   <h2>Recent delays</h2>
   <a class="btn btn-ghost" href="{{ url_for('delays.list_view') }}">Full delay log</a>

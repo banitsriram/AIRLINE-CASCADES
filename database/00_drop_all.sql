@@ -1,5 +1,6 @@
 SET FOREIGN_KEY_CHECKS = 0;
 DROP VIEW IF EXISTS v_missed_connections, v_duty_breaches, v_curfew_risk, v_flight_times;
+DROP TABLE IF EXISTS rebooking;
 DROP TABLE IF EXISTS cascade_candidate;
 DROP TABLE IF EXISTS delay_impact;
 DROP TABLE IF EXISTS ticket;
