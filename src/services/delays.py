@@ -44,7 +44,7 @@ def list_delays(open_only=False):
     sql = """SELECT fd.delay_id, fd.flight_id, ft.flight_number, ft.origin, ft.dest, ft.std,
                     dr.category, dc.iata_code, fd.minutes, fd.ops_status, fd.reported_by,
                     fd.recorded_at, fd.resolved_at,
-                    (SELECT COUNT(*) FROM delay_impact di WHERE di.delay_id = fd.delay_id) AS knock_on_flights,
+                    (SELECT COUNT(DISTINCT di.flight_id) FROM delay_impact di WHERE di.delay_id = fd.delay_id) AS knock_on_flights,
                     (SELECT COALESCE(SUM(di.minutes_added), 0) FROM delay_impact di
                       WHERE di.delay_id = fd.delay_id) AS knock_on_minutes
              FROM flight_delay fd

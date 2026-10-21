@@ -27,6 +27,13 @@ from src.services import operations
 
 bp = Blueprint("api", __name__)
 
+# Aliases the page templates use; the API returns each value once (std/sta, gate_code).
+_TEMPLATE_ALIASES = ("sched_departure", "sched_arrival", "gate_label")
+
+
+def _clean(row):
+    return {k: v for k, v in row.items() if k not in _TEMPLATE_ALIASES}
+
 
 def _error(message, status, **extra):
     return jsonify({"error": message, **extra}), status
@@ -57,7 +64,7 @@ def flights():
         date=request.args.get("date") or None,
         q=(request.args.get("q") or "").strip() or None,
     )
-    return jsonify({"count": len(rows), "flights": rows})
+    return jsonify({"count": len(rows), "flights": [_clean(r) for r in rows]})
 
 
 @bp.get("/flights/<int:flight_id>")
@@ -66,7 +73,7 @@ def flight(flight_id):
     if not row:
         return _error("Flight not found", 404)
     return jsonify({
-        **row,
+        **_clean(row),
         "crew": flights_service.crew_for_flight(flight_id),
         "delays": flights_service.delays_for_flight(flight_id),
         "knock_on": flights_service.knock_on_for_flight(flight_id),
@@ -125,7 +132,9 @@ def delay(delay_id):
     return jsonify({
         "notice": notice,
         "impacts": impacts,
-        "knock_on_flights": len(impacts),
+        # A flight can be moved more than once (one impact row per pass), so
+        # count flights, not rows
+        "knock_on_flights": len({i["flight_id"] for i in impacts} - {notice["flight_id"]}),
         "knock_on_minutes": sum(i["minutes_added"] for i in impacts),
         "missed_connections": summary["missed"],
         "duty_breaches": summary["duty"],

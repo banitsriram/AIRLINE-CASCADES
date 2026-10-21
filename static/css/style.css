@@ -200,6 +200,8 @@ strong.late { font-weight: var(--font-weight-regular); }
   margin-bottom: var(--spacing-60);
 }
 .page-header h1, .page-header h2 { margin: 0; }
+/* A section heading with actions keeps a plain h2's spacing */
+.page-header:has(> h2) { margin: var(--spacing-96) 0 var(--spacing-30); }
 .page-header p { margin: var(--spacing-12) 0 0; }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-12) var(--spacing-24); }
 h1 + p, h1 + .hint { margin-top: var(--spacing-18); }

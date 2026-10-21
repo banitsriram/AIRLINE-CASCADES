@@ -27,7 +27,7 @@ def summary():
 def recent_delays(limit=10):
     return query(
         """SELECT fd.delay_id, f.flight_number, dr.category, fd.minutes, fd.recorded_at,
-                  (SELECT COUNT(*) FROM delay_impact di WHERE di.delay_id = fd.delay_id) AS knock_on
+                  (SELECT COUNT(DISTINCT di.flight_id) FROM delay_impact di WHERE di.delay_id = fd.delay_id) AS knock_on
            FROM flight_delay fd
            JOIN flight f ON f.flight_id = fd.flight_id
            JOIN delay_code dc ON dc.code_id = fd.code_id

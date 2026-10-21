@@ -94,6 +94,7 @@ def detail(delay_id):
         impacts=impacts,
         by_link=by_link,
         knock_on_minutes=sum(i["minutes_added"] for i in impacts),
+        knock_on_flights=len(affected) - 1,
         summary=delays_service.affected_summary(affected),
         record=schema_info.record("flight_delay", "delay_id", delay_id),
     )

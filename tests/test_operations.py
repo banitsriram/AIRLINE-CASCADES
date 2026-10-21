@@ -14,6 +14,16 @@ def _count(sql, params=()):
     return query(sql, params)[0]["n"]
 
 
+def test_seed_is_consistent_with_the_clock():
+    """Flights seeded as already landed have completed bookings and crew duty
+    hours, so running the clock to a past time has nothing left to do."""
+    assert not any(operations.advance_clock(datetime(2000, 1, 1)).values())
+    landed_crew = _count(
+        """SELECT COUNT(DISTINCT ca.crew_id) AS n FROM crew_assignment ca
+           JOIN flight f ON f.flight_id = ca.flight_id WHERE f.status = 'ARRIVED'""")
+    assert _count("SELECT COUNT(DISTINCT crew_id) AS n FROM duty_log") == landed_crew
+
+
 def test_rebooking_restores_a_broken_connection():
     stranded = operations.stranded_tickets(
         [r["flight_id"] for r in query("SELECT flight_id FROM flight WHERE delay_minutes > 0")]
@@ -89,5 +99,5 @@ def test_clock_closes_notices_and_completes_journeys():
 def test_clock_never_runs_backwards():
     arrived = _count("SELECT COUNT(*) AS n FROM flight WHERE status = 'ARRIVED'")
     moved = operations.advance_clock(datetime(2000, 1, 1))
-    assert moved["departed"] == moved["arrived"] == moved["boarding"] == 0
+    assert not any(moved.values()), moved
     assert _count("SELECT COUNT(*) AS n FROM flight WHERE status = 'ARRIVED'") == arrived

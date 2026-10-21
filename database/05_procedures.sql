@@ -4,7 +4,21 @@ DELIMITER $$
 -- cascade_candidate with the delay each rule requires of every not-yet-departed
 -- flight (<= current delay means the rule is satisfied). Called once per pass by
 -- simulate_delay(); tests call it directly to check the schedule is consistent.
-CREATE PROCEDURE compute_cascade_candidates()
+--
+-- p_from / p_to limit the rules to flights scheduled in [p_from, p_to); NULL
+-- leaves that side open. simulate_delay() uses them to keep each pass's cost
+-- tied to the part of the schedule that can move, not to its total length:
+--   * a delay only pushes flights later, so nothing scheduled more than a day
+--     before the delayed flight can move (p_from);
+--   * a flight can only need more delay if something it waits for moved, and
+--     every rule's requirement on flight Y comes from a flight X that lands,
+--     pushes back or departs before Y's scheduled time + its own slack. So no
+--     flight scheduled more than a day after the latest arrival moved so far
+--     can be affected (p_to).
+-- Cutting at p_from can only hide a flight's predecessor (LAG() then returns
+-- NULL, i.e. no requirement), never substitute a wrong one; cutting at p_to
+-- drops successors, which LAG() never looks at.
+CREATE PROCEDURE compute_cascade_candidates(IN p_from DATETIME, IN p_to DATETIME)
 BEGIN
   DELETE FROM cascade_candidate;
 
@@ -14,7 +28,8 @@ BEGIN
          TIMESTAMPDIFF(MINUTE, b.std, DATE_ADD(a.eta, INTERVAL ap.min_turnaround_min MINUTE))
   FROM (SELECT flight_id, std, status, origin_airport_id,
                LAG(flight_id) OVER (PARTITION BY aircraft_id ORDER BY std, flight_id) AS prev_id
-        FROM v_flight_times WHERE status <> 'CANCELLED') b
+        FROM v_flight_times WHERE status <> 'CANCELLED'
+          AND (p_from IS NULL OR std >= p_from) AND (p_to IS NULL OR std < p_to)) b
   JOIN v_flight_times a ON a.flight_id = b.prev_id
   JOIN airport ap ON ap.airport_id = b.origin_airport_id
   WHERE b.status IN ('SCHEDULED', 'BOARDING');
@@ -27,7 +42,8 @@ BEGIN
                LAG(ft.flight_id) OVER (PARTITION BY ca.crew_id ORDER BY ft.std, ft.flight_id) AS prev_id
         FROM crew_assignment ca
         JOIN v_flight_times ft ON ft.flight_id = ca.flight_id
-        WHERE ca.unassigned_at IS NULL AND ft.status <> 'CANCELLED') b
+        WHERE ca.unassigned_at IS NULL AND ft.status <> 'CANCELLED'
+          AND (p_from IS NULL OR ft.std >= p_from) AND (p_to IS NULL OR ft.std < p_to)) b
   JOIN v_flight_times a ON a.flight_id = b.prev_id
   WHERE b.status IN ('SCHEDULED', 'BOARDING');
 
@@ -38,7 +54,8 @@ BEGIN
   FROM (SELECT flight_id, status,
                COALESCE(boarding_start, DATE_SUB(std, INTERVAL 45 MINUTE)) AS boarding_sched,
                LAG(flight_id) OVER (PARTITION BY gate_id ORDER BY std, flight_id) AS prev_id
-        FROM v_flight_times WHERE gate_id IS NOT NULL AND status <> 'CANCELLED') b
+        FROM v_flight_times WHERE gate_id IS NOT NULL AND status <> 'CANCELLED'
+          AND (p_from IS NULL OR std >= p_from) AND (p_to IS NULL OR std < p_to)) b
   JOIN v_flight_times a ON a.flight_id = b.prev_id
   WHERE b.status IN ('SCHEDULED', 'BOARDING');
 
@@ -53,7 +70,8 @@ BEGIN
                                   ORDER BY ft.delay_minutes > 0, ft.etd, ft.flight_id) AS slot_rank
         FROM v_flight_times ft
         JOIN airport ap ON ap.airport_id = ft.origin_airport_id
-        WHERE ft.status <> 'CANCELLED') x
+        WHERE ft.status <> 'CANCELLED'
+          AND (p_from IS NULL OR ft.std >= p_from) AND (p_to IS NULL OR ft.std < p_to)) x
   WHERE x.slot_rank > x.cap AND x.status IN ('SCHEDULED', 'BOARDING');
 END$$
 
@@ -99,6 +117,8 @@ BEGIN
   DECLARE v_changed INT DEFAULT 1;
   DECLARE v_pass INT DEFAULT 0;
   DECLARE v_status VARCHAR(10);
+  DECLARE v_from DATETIME;
+  DECLARE v_to DATETIME;
   DECLARE EXIT HANDLER FOR SQLEXCEPTION
   BEGIN
     ROLLBACK;
@@ -107,7 +127,8 @@ BEGIN
 
   START TRANSACTION;
 
-  SELECT status INTO v_status FROM flight WHERE flight_id = p_flight_id FOR UPDATE;
+  SELECT status, DATE_SUB(sched_departure, INTERVAL 1 DAY) INTO v_status, v_from
+  FROM flight WHERE flight_id = p_flight_id FOR UPDATE;
   IF v_status IS NULL THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Flight not found';
   END IF;
@@ -144,7 +165,11 @@ BEGIN
 
   WHILE v_changed > 0 AND v_pass < 50 DO
     SET v_pass = v_pass + 1;
-    CALL compute_cascade_candidates();
+    SET v_to = (SELECT DATE_ADD(MAX(DATE_ADD(f.sched_arrival, INTERVAL f.delay_minutes MINUTE)), INTERVAL 1 DAY)
+                FROM flight f
+                WHERE f.flight_id = p_flight_id
+                   OR f.flight_id IN (SELECT di.flight_id FROM delay_impact di WHERE di.delay_id = p_delay_id));
+    CALL compute_cascade_candidates(v_from, v_to);
 
     -- Winning (largest) requirement per flight, where it exceeds the current delay
     INSERT INTO delay_impact (delay_id, flight_id, cause_flight_id, link, minutes_added, old_etd, new_etd, pass_no)

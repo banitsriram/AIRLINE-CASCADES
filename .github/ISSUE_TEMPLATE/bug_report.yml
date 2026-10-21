@@ -1,0 +1,32 @@
+name: Bug report
+description: Something works differently from how it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: Steps from a freshly built database (`make db`), if you can.
+      placeholder: |
+        1. File a 90-minute delay on AI-101 tomorrow
+        2. Open its impact page
+        3. ...
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: MySQL version, Python version, and Docker or local
+      placeholder: MySQL 8.0.36, Python 3.12, local
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error output
+      description: The error page text or traceback, if any.
+      render: text
