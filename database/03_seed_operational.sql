@@ -13,7 +13,15 @@
 --
 -- Note: MySQL requires WITH to directly precede the SELECT it feeds, so for
 -- INSERT ... SELECT the WITH clause goes AFTER "INSERT INTO t (cols)".
-SET SESSION cte_max_recursion_depth = 20000;
+-- Size: @seed_days days of schedule (default 7). Passengers, bookings and
+-- connecting journeys scale with it, so a 7-day build has 2,000 passengers and
+-- ~13,500 bookings and a 28-day build four times that. scripts/setup_db.sh sets
+-- @seed_days from SEED_DAYS.
+SET @seed_days = GREATEST(COALESCE(@seed_days, 7), 1);
+SET @seed_passengers = ROUND(2000 * @seed_days / 7);
+SET @seed_single = ROUND(12000 * @seed_days / 7);
+SET @seed_connecting = ROUND(1500 * @seed_days / 7);
+SET SESSION cte_max_recursion_depth = 1000000;
 
 -- ============= AIRCRAFT (40) =============
 -- Pair k = CEIL(n/2) is based at hub ((k-1) % 6) + 1. Every 10th is a widebody.
@@ -43,7 +51,7 @@ dist AS (
 )
 SELECT o, d, km, 45 + FLOOR(km / 13) FROM dist;
 
--- ============= SCHEDULE (7 days x 20 pairs x 10 legs = 1,400 flights) =============
+-- ============= SCHEDULE (@seed_days x 20 pairs x 10 legs; 1,400 flights for 7 days) =============
 CREATE TABLE seed_leg (
   aircraft_id INT, day_no INT, leg_no INT,
   origin INT, dest INT, route_id INT,
@@ -54,7 +62,7 @@ CREATE TABLE seed_leg (
 
 INSERT INTO seed_leg (aircraft_id, day_no, leg_no, origin, dest, route_id, std, sta)
 WITH RECURSIVE
-days AS (SELECT 0 AS d UNION ALL SELECT d + 1 FROM days WHERE d < 6),
+days AS (SELECT 0 AS d UNION ALL SELECT d + 1 FROM days WHERE d < @seed_days - 1),
 ac AS (
   SELECT aircraft_id AS a, base_airport_id AS h,
          IF(aircraft_id % 2 = 1, 4, 6) AS legs,
@@ -253,9 +261,9 @@ SELECT l.flight_id, c.crew_id, c.role
 FROM seed_leg l
 JOIN crew c ON c.crew_id BETWEEN (l.team_no - 1) * 4 + 1 AND l.team_no * 4;
 
--- ============= PASSENGERS (2,000) =============
+-- ============= PASSENGERS (@seed_passengers) =============
 INSERT INTO passenger (name, passport_no, email, phone, date_of_birth)
-WITH RECURSIVE seq AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM seq WHERE n < 2000)
+WITH RECURSIVE seq AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM seq WHERE n < @seed_passengers)
 SELECT
   CONCAT(
     ELT(((n - 1) % 24) + 1, 'Aarav','Vivaan','Aditya','Vihaan','Arjun','Sai','Reyansh','Krishna','Ishaan','Rohan','Ananya','Diya','Priya','Kavya','Meera','Nikhil','Farhan','Zoya','Tanvi','Rahul','Sneha','Kabir','Ira','Dev'),
@@ -268,8 +276,8 @@ SELECT
   DATE_SUB(CURDATE(), INTERVAL (365 * 18 + ((n * 137) % (365 * 57))) DAY)
 FROM seq;
 
--- ============= BOOKINGS + TICKETS (~15,000) =============
--- 12,000 single-leg bookings, plus up to 1,500 two-leg connections through a
+-- ============= BOOKINGS + TICKETS (~15,000 per week) =============
+-- @seed_single single-leg bookings, plus up to @seed_connecting two-leg connections through a
 -- hub on different aircraft, with connection time between MCT and MCT + 3 h.
 CREATE TABLE seed_conn (rn INT PRIMARY KEY, f1 INT, f2 INT);
 INSERT INTO seed_conn
@@ -282,14 +290,14 @@ SELECT rn, f1, f2 FROM (
   WHERE l2.std >= DATE_ADD(l1.sta, INTERVAL ap.min_connect_min MINUTE)
     AND l2.std <= DATE_ADD(l1.sta, INTERVAL ap.min_connect_min + 180 MINUTE)
 ) pairs
-WHERE rn <= 1500;
+WHERE rn <= @seed_connecting;
 
 INSERT INTO booking (pnr, passenger_id, booking_date, status)
 WITH RECURSIVE seq AS (
-  SELECT 1 AS n UNION ALL SELECT n + 1 FROM seq WHERE n < 12000 + (SELECT COUNT(*) FROM seed_conn)
+  SELECT 1 AS n UNION ALL SELECT n + 1 FROM seq WHERE n < @seed_single + (SELECT COUNT(*) FROM seed_conn)
 )
 SELECT CONCAT('PN', LPAD(UPPER(CONV(n, 10, 36)), 4, '0')),
-       ((n * 7 - 1) % 2000) + 1,
+       ((n * 7 - 1) % @seed_passengers) + 1,
        DATE_SUB(CURDATE(), INTERVAL (n % 60) DAY),
        CASE WHEN n % 47 = 0 THEN 'CANCELLED'
             WHEN n % 31 = 0 THEN 'CHECKED_IN'
@@ -304,12 +312,12 @@ WITH numbered AS (
 SELECT b.booking_id, nf.flight_id
 FROM booking b
 JOIN numbered nf ON nf.rn = ((b.booking_id * 7919) % nf.total) + 1
-WHERE b.booking_id <= 12000;
+WHERE b.booking_id <= @seed_single;
 
 INSERT INTO seed_ticket
-SELECT 12000 + c.rn, c.f1 FROM seed_conn c
+SELECT @seed_single + c.rn, c.f1 FROM seed_conn c
 UNION ALL
-SELECT 12000 + c.rn, c.f2 FROM seed_conn c;
+SELECT @seed_single + c.rn, c.f2 FROM seed_conn c;
 
 INSERT INTO ticket (booking_id, flight_id, seat_no, fare, class)
 SELECT booking_id, flight_id,

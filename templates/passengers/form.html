@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 {% from "_macros.html" import field %}
-{% block title %}{{ 'Edit' if passenger else 'New' }} Passenger{% endblock %}
+{% block title %}{{ 'Edit' if passenger else 'New' }} passenger{% endblock %}
 {% block content %}
-<h1>{{ 'Edit' if passenger else 'New' }} Passenger</h1>
+<h1>{{ 'Edit' if passenger else 'New' }} passenger</h1>
 <form method="post" class="form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   {{ field('name', 'Name', passenger.name if passenger else '', required=True) }}
   {{ field('passport_no', 'Passport No.', passenger.passport_no if passenger else '') }}
   {{ field('email', 'Email', passenger.email if passenger else '', type='email') }}

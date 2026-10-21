@@ -5,6 +5,7 @@
 <p>This deletes all {{ count }} delay notices and their knock-on records, and puts every flight back on its scheduled times. Cancelled flights go back to SCHEDULED.</p>
 <p class="hint">Gate changes and aircraft swaps made by notices are kept. Run <code>bash scripts/setup_db.sh</code> for a full rebuild.</p>
 <form method="post" class="form-inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <button type="submit" class="btn">Reset all delays</button>
   <a class="btn btn-ghost" href="{{ url_for('delays.list_view') }}">Cancel</a>
 </form>

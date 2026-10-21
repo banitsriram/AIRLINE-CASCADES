@@ -1,93 +1,191 @@
-# Airline Cascades — DBMS CIA 3 Project
+# Airline Cascades
 
-Airline operations and delay-cascade simulator. File a delay on any flight
-(IATA delay code, minutes or new ETD, gate change, aircraft swap, passenger
-announcement, meal voucher/compensation, who reported it) and the database
-cascades it across the whole airline:
+[![CI](https://github.com/banitsriram/AIRLINE-CASCADES/actions/workflows/ci.yml/badge.svg)](https://github.com/banitsriram/AIRLINE-CASCADES/actions/workflows/ci.yml)
 
-- **Aircraft** — the same plane's later legs slip (minimum turnaround per airport)
-- **Crew** — flights waiting for crew who are arriving on a late flight
-- **Gates** — the next flight at a gate can't board until it's free
-- **Runway slots** — each airport's departures-per-hour limit
-- **Passengers** — missed connections, crew duty-limit breaches and curfew
-  risks are flagged (from views, never stored)
+An airline operations database where one late flight moves everything that
+depends on it. File a delay on any flight and MySQL works out the knock-on
+effects across the whole network: the same aircraft's later legs, the crew
+waiting for that aircraft, the next flight at the gate, and runway slots at
+congested airports. Every flight it moves is logged with the reason and its
+old and new times, and the passengers, crew and airports that end up in
+trouble are flagged.
 
-Every knock-on change is logged, so each delay has an impact page listing
-every flight that moved, why, and its old → new times. Airport boards show
-scheduled vs estimated times for every airport.
+The logic lives in the database (stored procedures, triggers, views and a
+recursive CTE); the Flask app is a thin layer that shows it and lets you drive it.
 
-Demo data: 20 airports with gates and operating rules, 40 aircraft on
-realistic hub-and-spoke rotations, 1,400 flights over 7 days, 400 crew,
-2,000 passengers, 15,000 tickets (incl. connecting journeys).
+![Dashboard](docs/screenshots/dashboard.png)
 
-19-table schema (3NF, two documented denormalizations), 4 views, 3 triggers,
-6 stored procedures, full CRUD across every entity.
+## What it does
 
-## Prerequisites
+- **Delay cascade.** `simulate_delay()` applies a delay notice (IATA AHM 730
+  code, minutes or a new ETD, gate change, aircraft swap, passenger care) and
+  then re-evaluates four rules until nothing else moves:
 
-- Python 3.9+
-- MySQL 8.0+ running locally (needed for `WITH RECURSIVE` and `CHECK` constraint enforcement)
-- pip
+  | Link | Rule |
+  |---|---|
+  | Aircraft | A leg can't leave before the same aircraft lands plus the airport's minimum turnaround |
+  | Crew | A crew member's next flight can't leave until 45 min after their previous one lands |
+  | Gate | The next flight at a gate can't start boarding until 10 min after the previous one pushes back |
+  | Slot | An airport can't exceed its departures per clock hour; the overflow moves to the next hour |
 
-## Setup (three commands)
+- **Fallout, always current.** Estimated times, missed connections, crew over
+  the 13-hour duty limit and flights now outside an airport's curfew are views,
+  so they can't drift from the data.
+- **Rebooking.** Passengers whose connection broke can be moved, one at a time
+  or all at once from a delay's impact page, to the next flight on the same
+  route they can still make that has a free seat (in their own cabin where
+  possible).
+- **Operations clock.** Run the operation forward to any time: flights board,
+  depart and land at their estimated times, crew duty hours are booked by
+  trigger as each flight lands, notices close and finished journeys complete.
+- **Everything editable.** Full CRUD for flights, crew, passengers, bookings,
+  airports and their operating rules, gates, routes, aircraft and delay codes.
+  Changes made directly in the MySQL client (new rows, columns, ENUM values,
+  tables or views) show on the next page load.
+- **JSON API** for the same operations, under `/api/v1`.
+
+## Screenshots
+
+| | |
+|---|---|
+| ![Filing a delay](docs/screenshots/delay-form.png) | ![Cascade trace](docs/screenshots/cascade-trace.png) |
+| Filing a delay: the form derives the new ETD, ETA and boarding time | Cascade trace: the delay tree from a recursive CTE |
+| ![Airport board](docs/screenshots/airport-board.png) | ![Rebooked passenger](docs/screenshots/booking-rebooked.png) |
+| Airport board after the clock has run | A passenger moved off a missed connection |
+| ![On-time report](docs/screenshots/report-ontime.png) | ![Schema browser](docs/screenshots/schema.png) |
+| On-time performance by day | Live schema browser (read from `information_schema`) |
+
+<details>
+<summary>Impact page for one 180-minute delay</summary>
+
+![Impact of one delay](docs/screenshots/delay-impact.png)
+
+</details>
+
+## Data
+
+The seed builds a self-consistent hub-and-spoke airline around today's date:
+
+| | 7 days (default) | 28 days |
+|---|---|---|
+| Airports | 20, with gates, curfews and slot limits | 20 |
+| Aircraft | 40 (A320, A321neo, 737-800, 777-300ER) | 40 |
+| Flights | 1,400 | 5,600 |
+| Crew | 400, in 4-person teams | 400 |
+| Passengers | 2,000 | 8,000 |
+| Tickets | ~15,000, incl. ~1,500 connecting journeys | ~60,000 |
+
+With no delays filed the schedule satisfies every cascade rule and raises no
+flags, so flights only ever move because somebody filed a delay. The tests
+check this.
+
+## Running it
+
+### With Docker
 
 ```
-cp .env.example .env      # then edit .env with your MySQL password
+docker compose up --build
+```
+
+Open http://localhost:5000. The database is built on first start. For a
+longer schedule, `SEED_DAYS=28 REBUILD_DB=1 docker compose up`.
+
+### Locally
+
+Needs Python 3.9+ and MySQL 8.0+ (for `WITH RECURSIVE`, window functions and
+enforced `CHECK` constraints), with the `mysql` client on your PATH.
+
+```
+cp .env.example .env          # set your MySQL password
 pip install -r requirements.txt
-bash scripts/setup_db.sh
+bash scripts/setup_db.sh      # SEED_DAYS=28 bash scripts/setup_db.sh for four weeks
+FLASK_DEBUG=1 python app.py
 ```
 
-## Run
+Rebuilding the database is also how you start over: the seed is relative to
+the day you build it.
+
+There are no user accounts: it is a single-operator tool. Forms are
+CSRF-protected and the API only accepts JSON, but run it locally or behind
+your own authentication rather than on the open internet.
+
+## A quick tour
+
+1. **Flights** → **Delay** on any upcoming flight. Pick a code and type the
+   minutes; the form fills in the new ETD, boarding time and a draft announcement.
+2. **File delay & cascade** opens the impact page: every flight it moved, which
+   link moved it, and the passengers and crew affected.
+3. **Rebook all** on that page moves the stranded passengers.
+4. **Airports** → **Board** shows scheduled against estimated times.
+5. **Cascade** traces the delay tree from any flight (recursive CTE over
+   `parent_flight_id`).
+6. On the dashboard, **Run to this time** moves the operation forward.
+7. **Delays** → **Reset all delays** puts every flight back on schedule.
+
+## API
 
 ```
-python app.py
+GET  /api/v1/flights?status=&date=YYYY-MM-DD&q=
+GET  /api/v1/flights/<id>
+POST /api/v1/flights/<id>/delays
+GET  /api/v1/delays?open=1
+GET  /api/v1/delays/<id>
+GET  /api/v1/airports
+GET  /api/v1/airports/<IATA>/board?date=YYYY-MM-DD
+GET  /api/v1/network
+POST /api/v1/clock
 ```
 
-Open http://localhost:5000
-
-## Demo walkthrough
-
-1. **Flights** → press **Delay** on any upcoming flight (or on an airport board).
-2. Pick an IATA code and type the minutes (or a new ETD); the form fills in
-   the new ETA, boarding time, vouchers and a draft announcement.
-3. **File delay & cascade** → the impact page shows every flight it moved.
-4. **Airports** → **Board** to see scheduled vs estimated times.
-5. **Delays** → **Reset all delays** to put everything back on schedule.
-
-All reference data (airports and their timings, gates, delay codes, routes,
-aircraft) is editable under **Admin** / **Airports**.
-
-## Check
-
-Each check changes data, so run it on a freshly seeded database:
+Filing a delay takes the same fields as the form and returns the notice with
+its knock-on impact:
 
 ```
-bash scripts/setup_db.sh && python tests/test_cascade.py
-bash scripts/setup_db.sh && python tests/test_crew_assignment.py
-python tests/test_live_changes.py   # manual MySQL edits show on the site (rebuilds the DB itself)
+curl -X POST localhost:5000/api/v1/flights/412/delays \
+  -H 'Content-Type: application/json' \
+  -d '{"code": "41", "minutes": 120, "reported_by": "MCC", "meal_voucher": true}'
 ```
 
-## Changing tables by hand (viva)
+Invalid notices get a `422` listing what's wrong; a flight that has already
+landed gets a `409` with MySQL's message.
 
-Edits made directly in MySQL show on the next page load: rows (INSERT/UPDATE/DELETE),
-new columns (every detail page has an "All columns" section; admin forms pick them up),
-new ENUM values (every dropdown reads them live), new tables and views (Schema page,
-with a row browser). A change that breaks a page's query shows MySQL's exact error.
-If your MySQL client has autocommit off, `COMMIT` first.
+## Tests
 
-## Report
+```
+pip install -r requirements-dev.txt
+pytest
+```
 
-`python scripts/build_report_context.py` regenerates `docs/REPORT_CONTEXT.md`: the
-whole project (design, SQL, data, live test results, a measured cascade, screenshots
-list and full source) in one file to hand to Claude for writing the report.
+Each test module rebuilds the database first, so point `.env` at a database
+you don't mind losing. The suite covers the cascade invariants (zero-delay
+consistency, every minute accounted for, no rule left violated after it
+settles), rebooking, the clock, the API, every page rendering, and hand-made
+schema changes. CI runs it against MySQL 8.0 and also builds and starts the
+Docker image.
 
-## Docs
+## Layout
 
-- `docs/CRUD_MATRIX.md` — which UI page implements each CRUD cell
-- `docs/NORMALIZATION.md` — per-table 3NF justification
-- `docs/VIVA_PREP.md` — Q&A for oral defence
-- `docs/SCHEMA_DIAGRAM.md` — relationship description
-- `docs/DEVIATIONS.md` — spec deviations
-- `docs/superpowers/specs/2026-09-23-org-wide-delay-cascade-design.md` — cascade design
-- `docs/REPORT_CONTEXT.md` — everything needed to write the project report (design, SQL, data, measured results, full source)
-- `docs/REPORT_CONTEXT_CORE.md` — the same without the source-code appendix (smaller upload)
+```
+database/         schema, seed data, triggers, procedures, views (run in order)
+  queries/        the eight analytical queries behind the reports
+src/services/     all SQL used by the app, one module per area
+src/routes/       Flask blueprints (pages and /api/v1)
+templates/        Jinja templates
+static/           CSS and the dashboard's network canvas
+scripts/          database build and container entrypoint
+tests/            pytest suite
+docs/             design notes
+```
+
+## Design notes
+
+- [docs/SCHEMA_DIAGRAM.md](docs/SCHEMA_DIAGRAM.md): ER diagram and the 20 tables by dependency layer
+- [docs/NORMALIZATION.md](docs/NORMALIZATION.md): 3NF per table and the two deliberate denormalizations
+- [docs/DEVIATIONS.md](docs/DEVIATIONS.md): MySQL restrictions that shaped the design, e.g. why the cascade is a procedure and not a trigger
+- [docs/DESIGN_QA.md](docs/DESIGN_QA.md): common questions about how it works
+- [docs/CRUD_MATRIX.md](docs/CRUD_MATRIX.md): which page implements each operation
+
+Originally built as a database systems course project.
+
+## License
+
+MIT

@@ -1,12 +1,19 @@
-from flask import Flask, render_template
+import os
+from datetime import date, datetime, timedelta
+from decimal import Decimal
+
+from flask import Flask, jsonify, render_template, request
+from flask.json.provider import DefaultJSONProvider
 import mysql.connector
 
+from src import csrf
 from src.config import Settings
 from src.db import query
 from src.services.lookups import enum_values
 from src.routes import (
     admin,
     airports,
+    api,
     bookings,
     cascade,
     crew,
@@ -19,9 +26,26 @@ from src.routes import (
 )
 
 
+class JSONProvider(DefaultJSONProvider):
+    """ISO 8601 datetimes, MySQL TIME values as HH:MM:SS, DECIMAL as numbers."""
+
+    @staticmethod
+    def default(o):
+        if isinstance(o, (datetime, date)):
+            return o.isoformat()
+        if isinstance(o, timedelta):
+            seconds = int(o.total_seconds())
+            return f"{seconds // 3600:02d}:{seconds // 60 % 60:02d}:{seconds % 60:02d}"
+        if isinstance(o, Decimal):
+            return float(o)
+        return DefaultJSONProvider.default(o)
+
+
 def create_app():
     app = Flask(__name__, template_folder="templates", static_folder="static")
+    app.json = JSONProvider(app)
     app.config.from_object(Settings)
+    csrf.init_app(app)
 
     app.register_blueprint(dashboard.bp)
     app.register_blueprint(flights.bp, url_prefix="/flights")
@@ -34,6 +58,7 @@ def create_app():
     app.register_blueprint(schema.bp, url_prefix="/schema")
     app.register_blueprint(delays.bp, url_prefix="/delays")
     app.register_blueprint(airports.bp, url_prefix="/airports")
+    app.register_blueprint(api.bp, url_prefix="/api/v1")
 
     app.jinja_env.globals["enum_values"] = enum_values
 
@@ -44,8 +69,14 @@ def create_app():
         return render_template("error.html", title="The database rejected this page",
                                message=err.msg, code=err.errno), 500
 
+    @app.errorhandler(400)
+    def bad_request(err):
+        return render_template("error.html", title="Request refused", message=err.description, code=400), 400
+
     @app.errorhandler(404)
     def not_found(err):
+        if request.path.startswith("/api/"):
+            return jsonify({"error": "Not found"}), 404
         return render_template("error.html", title="Nothing here",
                                message="That page or record doesn't exist. It may have been deleted.", code=404), 404
 
@@ -94,4 +125,4 @@ def create_app():
 app = create_app()
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "1", port=int(os.environ.get("PORT", 5000)))

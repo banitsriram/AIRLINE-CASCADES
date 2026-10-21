@@ -4,6 +4,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 
 from src.routes.helpers import db_action
 from src.services import delays as delays_service
+from src.services import operations
 from src.services.lookups import enum_values
 from src.services import schema_info
 
@@ -119,6 +120,24 @@ def edit(delay_id):
 def resolve(delay_id):
     with db_action("Delay marked resolved"):
         delays_service.resolve(delay_id)
+    return redirect(url_for("delays.detail", delay_id=delay_id))
+
+
+@bp.route("/<int:delay_id>/rebook", methods=["POST"])
+def rebook_all(delay_id):
+    """Rebooks every passenger whose connection this notice broke."""
+    notice = delays_service.get_delay(delay_id)
+    if not notice:
+        flash("Delay notice not found", "error")
+        return redirect(url_for("delays.list_view"))
+    affected = {notice["flight_id"]} | {i["flight_id"] for i in delays_service.impacts(delay_id)}
+    rebooked, failures = operations.rebook_stranded(affected)
+    if rebooked:
+        flash(f"Rebooked {rebooked} {'passenger' if rebooked == 1 else 'passengers'} onto later flights", "success")
+    for pnr, reason in failures:
+        flash(f"{pnr}: {reason}", "error")
+    if not rebooked and not failures:
+        flash("No broken connections left to rebook", "success")
     return redirect(url_for("delays.detail", delay_id=delay_id))
 
 

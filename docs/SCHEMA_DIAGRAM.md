@@ -1,9 +1,39 @@
-# Schema diagram (relationship description)
+# Schema diagram
 
-19 tables and 4 views, organized into 4 dependency layers (as laid out in
+20 tables and 4 views, organized into 5 dependency layers (as laid out in
 `database/01_schema.sql`) — each layer only references tables in layers
 above it. The live schema, with column types and keys, is also browsable at
 runtime under **Schema** in the app (backed by `information_schema`).
+
+```mermaid
+erDiagram
+    airport ||--o{ gate : has
+    airport ||--o{ route : "origin of"
+    airport ||--o{ route : "destination of"
+    airport ||--o{ aircraft : "base of"
+    airport ||--o{ crew : "base of"
+    aircraft_type ||--o{ aircraft : "type of"
+    aircraft_type ||--o{ crew_certification : "rated on"
+    delay_reason ||--o{ delay_code : groups
+    route ||--o{ flight : "flown as"
+    aircraft ||--o{ flight : operates
+    aircraft ||--o{ maintenance_log : "serviced in"
+    gate ||--o{ flight : "departs from"
+    flight |o--o{ flight : "parent of (cascade)"
+    crew ||--o{ crew_certification : holds
+    crew ||--o{ duty_log : logs
+    crew ||--o{ crew_assignment : "rostered as"
+    flight ||--o{ crew_assignment : crewed
+    passenger ||--o{ booking : makes
+    booking ||--o{ ticket : contains
+    flight ||--o{ ticket : "seat on"
+    flight ||--o{ flight_delay : "notice on"
+    delay_code ||--o{ flight_delay : classifies
+    flight_delay ||--o{ delay_impact : causes
+    flight ||--o{ delay_impact : "moved by"
+    ticket ||--o{ rebooking : "moved by"
+    flight ||--o{ rebooking : "moved to"
+```
 
 ## Layer 1 — no foreign keys
 
@@ -42,6 +72,11 @@ runtime under **Schema** in the app (backed by `information_schema`).
 - **`cascade_candidate`** — no FKs; the engine's per-pass scratch table
 - **`ticket`** → `booking`, `flight`
 
+## Layer 5 — reference Layer 4
+
+- **`rebooking`** → `ticket`, `flight` (the flight left), `flight` (the flight
+  moved to) — one row per ticket moved by `rebook_ticket()`
+
 ## Views
 
 - **`v_flight_times`** — every flight with ETD/ETA (scheduled + `delay_minutes`),
@@ -73,7 +108,7 @@ aircraft, or aircraft type that's still referenced) — appropriate for
 reference data. The exceptions:
 
 - `crew_certification`, `duty_log`, `crew_assignment`, `flight_delay`,
-  `delay_impact`, `gate` are `ON DELETE CASCADE` from their parent (deleting a crew member or flight
+  `delay_impact`, `rebooking`, `gate` are `ON DELETE CASCADE` from their parent (deleting a crew member or flight
   cleans up its dependent rows).
 - `maintenance_log` is `ON DELETE CASCADE` from `aircraft`.
 - `ticket` is `ON DELETE RESTRICT` from `flight` (a flight with sold tickets

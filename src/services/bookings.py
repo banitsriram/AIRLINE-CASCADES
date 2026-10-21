@@ -29,10 +29,12 @@ def get_booking_id_by_pnr(pnr):
 
 def tickets_for_booking(booking_id):
     return query(
-        """SELECT t.ticket_id, t.flight_id, f.flight_number, t.seat_no, t.fare, t.class,
+        """SELECT t.ticket_id, t.flight_id, ft.flight_number, ft.origin, ft.dest, ft.etd,
+                  ft.status AS flight_status, ft.display_status, t.seat_no, t.fare, t.class,
                   t.checked_in_at, t.boarded_at
-           FROM ticket t JOIN flight f ON f.flight_id = t.flight_id
-           WHERE t.booking_id=%s""",
+           FROM ticket t JOIN v_flight_times ft ON ft.flight_id = t.flight_id
+           WHERE t.booking_id=%s
+           ORDER BY ft.std""",
         (booking_id,),
     )
 

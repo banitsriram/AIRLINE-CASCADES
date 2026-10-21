@@ -4,6 +4,7 @@
 {% block content %}
 <h1>{{ 'Edit' if row else 'New' }} {{ cfg.item }}</h1>
 <form method="post" class="form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   {% for f in fields %}
     {% if f.type == 'fk' %}
       {{ field(f.name, f.label, row[f.name] if row else '', type='fk', options=fk_options[f.name], required=f.required) }}

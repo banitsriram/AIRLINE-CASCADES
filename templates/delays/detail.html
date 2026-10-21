@@ -4,12 +4,13 @@
 {% block title %}Delay #{{ notice.delay_id }} impact{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h1>Delay #{{ notice.delay_id }} — {{ notice.flight_number }} {{ notice.origin }} → {{ notice.dest }}</h1>
+  <h1>Delay #{{ notice.delay_id }} — <span class="nowrap">{{ notice.flight_number }}</span> <span class="nowrap">{{ notice.origin }} → {{ notice.dest }}</span></h1>
   <div class="actions">
     <a class="btn btn-ghost" href="{{ url_for('flights.detail', flight_id=notice.flight_id) }}">Flight</a>
     <a class="btn btn-ghost" href="{{ url_for('delays.edit', delay_id=notice.delay_id) }}">Edit notice</a>
     {% if not notice.resolved_at %}
     <form method="post" action="{{ url_for('delays.resolve', delay_id=notice.delay_id) }}" class="inline-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn">Mark resolved</button>
     </form>
     {% endif %}
@@ -76,7 +77,16 @@
   </tbody>
 </table>
 
-<h2>Missed passenger connections</h2>
+<div class="page-header">
+  <h2>Missed passenger connections</h2>
+  {% if summary.missed %}
+  <form method="post" action="{{ url_for('delays.rebook_all', delay_id=notice.delay_id) }}" class="inline-form"
+        onsubmit="return confirm('Move every stranded passenger to the next flight on their onward route?');">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-ghost">Rebook all {{ summary.missed|length }}</button>
+  </form>
+  {% endif %}
+</div>
 <table class="data-table">
   <thead><tr><th>PNR</th><th>Passenger</th><th>Inbound</th><th>Arrives</th><th>Onward</th><th>Departs</th><th>At</th><th>Connection</th></tr></thead>
   <tbody>
@@ -97,7 +107,7 @@
 
 <div class="grid-2">
   <div>
-    <h2>Crew duty-limit breaches (&gt; 13 h)</h2>
+    <h2>Crew over the 13&nbsp;h duty limit</h2>
     <table class="data-table">
       <thead><tr><th>Crew</th><th>Role</th><th>Date</th><th>Duty</th></tr></thead>
       <tbody>

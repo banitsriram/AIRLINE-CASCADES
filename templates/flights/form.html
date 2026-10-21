@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 {% from "_macros.html" import field %}
-{% block title %}{{ 'Edit' if flight else 'New' }} Flight{% endblock %}
+{% block title %}{{ 'Edit' if flight else 'New' }} flight{% endblock %}
 {% block content %}
-<h1>{{ 'Edit' if flight else 'New' }} Flight</h1>
+<h1>{{ 'Edit' if flight else 'New' }} flight</h1>
 <form method="post" class="form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   {{ field('flight_number', 'Flight Number', flight.flight_number if flight else '', required=True) }}
   {{ field('route_id', 'Route', flight.route_id if flight else '', type='fk', options=routes, required=True) }}
   {{ field('aircraft_id', 'Aircraft', flight.aircraft_id if flight else '', type='fk', options=aircraft, required=True) }}

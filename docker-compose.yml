@@ -1,0 +1,32 @@
+services:
+  db:
+    image: mysql:8.0
+    # The app image's client is MariaDB's, which authenticates most simply
+    # with the native password plugin.
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: cascades
+    volumes:
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pcascades"]
+      interval: 5s
+      retries: 30
+
+  web:
+    build: .
+    environment:
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: cascades
+      DB_NAME: airline_cascades
+      SEED_DAYS: ${SEED_DAYS:-7}
+      REBUILD_DB: ${REBUILD_DB:-0}
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  dbdata:

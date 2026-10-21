@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: cascades
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost -pcascades"
+          --health-interval 5s --health-retries 30
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: cascades
+      DB_NAME: airline_cascades
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check .
+      - name: Build the database
+        run: bash scripts/setup_db.sh
+      - name: Tests
+        run: pytest -v
+      - name: Build a four-week schedule
+        run: SEED_DAYS=28 DB_NAME=airline_cascades_28d bash scripts/setup_db.sh
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose up -d --build
+      - name: Wait for the app
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS localhost:5000/api/v1/network; then exit 0; fi
+            sleep 3
+          done
+          docker compose logs
+          exit 1
+      - run: curl -fsS localhost:5000/ > /dev/null
+      - if: always()
+        run: docker compose down -v

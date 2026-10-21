@@ -292,4 +292,25 @@ CREATE TABLE ticket (
   FOREIGN KEY (flight_id)  REFERENCES flight(flight_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- A ticket moved off a flight the passenger can no longer make (a broken
+-- connection or a cancellation) onto a later flight on the same route.
+-- The ticket row itself is updated in place; this keeps the history.
+CREATE TABLE rebooking (
+  rebooking_id   INT AUTO_INCREMENT PRIMARY KEY,
+  ticket_id      INT NOT NULL,
+  old_flight_id  INT NULL,
+  new_flight_id  INT NOT NULL,
+  old_seat_no    VARCHAR(4) NOT NULL,
+  new_seat_no    VARCHAR(4) NOT NULL,
+  reason         ENUM('MISSED_CONNECTION','CANCELLATION','PASSENGER_REQUEST') NOT NULL,
+  rebooked_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  -- No CHECK (old_flight_id <> new_flight_id): both columns carry FK actions,
+  -- which MySQL won't combine with a CHECK (error 3823, as for flight). The only
+  -- writer, rebook_ticket(), always picks a different flight.
+  FOREIGN KEY (ticket_id)     REFERENCES ticket(ticket_id) ON DELETE CASCADE,
+  FOREIGN KEY (old_flight_id) REFERENCES flight(flight_id) ON DELETE SET NULL,
+  FOREIGN KEY (new_flight_id) REFERENCES flight(flight_id) ON DELETE CASCADE,
+  INDEX idx_rebook_ticket (ticket_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 SET FOREIGN_KEY_CHECKS = 1;

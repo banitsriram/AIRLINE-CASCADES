@@ -10,6 +10,7 @@
   <div class="actions">
     <a class="btn btn-ghost" href="{{ url_for('crew.edit', crew_id=crew.crew_id) }}">Edit</a>
     <form method="post" action="{{ url_for('crew.delete', crew_id=crew.crew_id) }}" onsubmit="return confirm('Delete this crew member?');" class="inline-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn btn-danger">Delete</button>
     </form>
   </div>
@@ -22,7 +23,7 @@
 
 <h2>Certifications</h2>
 <table class="data-table">
-  <thead><tr><th>Aircraft Type</th><th>Certified</th><th>Expires</th><th></th></tr></thead>
+  <thead><tr><th>Aircraft type</th><th>Certified</th><th>Expires</th><th></th></tr></thead>
   <tbody>
     {% for c in certs %}
     <tr>
@@ -31,6 +32,7 @@
       <td>{{ c.expiry_date|when }}</td>
       <td>
         <form method="post" action="{{ url_for('crew.decertify', crew_id=crew.crew_id, type_id=c.type_id) }}" class="inline-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-small">Remove</button>
         </form>
       </td>
@@ -42,6 +44,7 @@
 </table>
 
 <form method="post" action="{{ url_for('crew.certify', crew_id=crew.crew_id) }}" class="form-inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <select name="type_id" required>
     {% for t in aircraft_types %}
     <option value="{{ t.id }}">{{ t.label }}</option>

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import all_columns %}
+{% from "_status.html" import status_badge %}
 {% block title %}Booking {{ booking.pnr }}{% endblock %}
 {% block content %}
 <div class="page-header">
@@ -7,6 +8,7 @@
   <div class="actions">
     {% if booking.status != 'CANCELLED' %}
     <form method="post" action="{{ url_for('bookings.cancel', booking_id=booking.booking_id) }}" onsubmit="return confirm('Cancel this booking?');" class="inline-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn btn-danger">Cancel booking</button>
     </form>
     {% endif %}
@@ -20,32 +22,64 @@
 
 <h2>Tickets</h2>
 <table class="data-table">
-  <thead><tr><th>Flight</th><th>Seat</th><th>Class</th><th>Fare</th><th>Checked in</th><th></th></tr></thead>
+  <thead><tr><th>Flight</th><th>Route</th><th>Departs</th><th>Status</th><th>Seat</th><th>Class</th><th>Fare</th><th>Checked in</th><th></th></tr></thead>
   <tbody>
     {% for t in tickets %}
     <tr>
-      <td>{{ t.flight_number }}</td>
+      <td><a href="{{ url_for('flights.detail', flight_id=t.flight_id) }}">{{ t.flight_number }}</a></td>
+      <td>{{ t.origin }} → {{ t.dest }}</td>
+      <td>{{ t.etd|when }}</td>
+      <td>{{ status_badge(t.display_status) }}</td>
       <td>{{ t.seat_no }}</td>
       <td>{{ t.class|human }}</td>
       <td>{{ t.fare }}</td>
       <td>{{ (t.checked_in_at|when) or '—' }}</td>
       <td>
-        {% if not t.checked_in_at %}
+        {% if booking.status != 'CANCELLED' and t.flight_status in ('SCHEDULED', 'CANCELLED') %}
+        {% if not t.checked_in_at and t.flight_status == 'SCHEDULED' %}
         <form method="post" action="{{ url_for('bookings.checkin', ticket_id=t.ticket_id) }}" class="inline-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="hidden" name="booking_id" value="{{ booking.booking_id }}">
           <button type="submit" class="btn btn-small">Check in</button>
+        </form>
+        {% endif %}
+        <form method="post" action="{{ url_for('bookings.rebook', ticket_id=t.ticket_id) }}" class="inline-form"
+              onsubmit="return confirm('Move this ticket to the next flight on {{ t.origin }} → {{ t.dest }} with a free seat?');">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="booking_id" value="{{ booking.booking_id }}">
+          <input type="hidden" name="reason" value="{{ 'CANCELLATION' if t.flight_status == 'CANCELLED' else 'PASSENGER_REQUEST' }}">
+          <button type="submit" class="btn btn-small">Rebook</button>
         </form>
         {% endif %}
       </td>
     </tr>
     {% else %}
-    <tr><td colspan="6">No tickets.</td></tr>
+    <tr><td colspan="9">No tickets.</td></tr>
     {% endfor %}
   </tbody>
 </table>
 
+{% if rebookings %}
+<h2>Rebookings</h2>
+<table class="data-table">
+  <thead><tr><th>When</th><th>Reason</th><th>From</th><th>To</th><th>Seat</th></tr></thead>
+  <tbody>
+    {% for r in rebookings %}
+    <tr>
+      <td>{{ r.rebooked_at|when }}</td>
+      <td>{{ r.reason|human }}</td>
+      <td>{% if r.old_flight_id %}<a href="{{ url_for('flights.detail', flight_id=r.old_flight_id) }}">{{ r.old_flight }}</a> <span class="muted">{{ r.old_std|when }}</span>{% else %}<span class="muted">deleted flight</span>{% endif %}</td>
+      <td><a href="{{ url_for('flights.detail', flight_id=r.new_flight_id) }}">{{ r.new_flight }}</a> <span class="muted">{{ r.new_std|when }}</span></td>
+      <td>{{ r.old_seat_no }} → {{ r.new_seat_no }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
 <h2>Add another ticket</h2>
 <form method="post" action="{{ url_for('bookings.add_ticket', booking_id=booking.booking_id) }}" class="form-inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <select name="flight_id" required>
     {% for f in flights %}
     <option value="{{ f.flight_id }}">{{ f.flight_number }} ({{ f.origin }} → {{ f.dest }})</option>

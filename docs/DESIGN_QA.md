@@ -1,4 +1,6 @@
-# Viva prep — Q&A
+# Design questions and answers
+
+The questions people ask most about how this project is built, and why.
 
 ## Design
 
@@ -131,7 +133,7 @@ bespoke logic. Flights, crew, passengers, and bookings *do* have bespoke
 logic (cascade linkage, certifications, duty limits, the booking
 procedure), so those get dedicated blueprints instead.
 
-## Manual changes during the viva
+## Changing tables by hand
 
 **Q: If I change a table directly in MySQL, does the website show it?**
 Yes, on the next page load. Nothing is cached; every page queries MySQL, and the
@@ -153,3 +155,26 @@ It's recorded, but nothing moves: the cascade runs only through
 `simulate_delay()`, which also keeps `flight.delay_minutes` in step. Updating
 `flight.delay_minutes` directly does show everywhere at once, because ETD/ETA
 are computed from it by `v_flight_times`.
+
+## Running the operation
+
+**Q: Flights are seeded with a status. Doesn't that go stale as real time passes?**
+It would, so the operation has a clock. `advance_clock(p_now)` moves every
+flight whose boarding time, ETD or ETA has passed on to BOARDING, DEPARTED or
+ARRIVED, stamping actual times from the estimates. Landing sets
+`actual_arrival`, which fires `trg_update_duty`, so crew duty hours accumulate
+exactly as flights land. The same call closes delay notices on flights that
+have left and marks bookings COMPLETED once every leg has landed. It only ever
+moves statuses forward, so running it to an earlier time does nothing.
+
+**Q: What happens to a passenger whose connection breaks?**
+`v_missed_connections` lists them. `rebook_ticket()` moves the onward ticket
+to the earliest later flight on the same route that leaves at least the
+connecting airport's minimum connection time after the inbound flight's
+current ETA and still has a seat (sold seats counted against the aircraft
+type's capacity). It picks the lowest free seat in the passenger's cabin, locks
+the target flight row so two rebookings can't take the same seat, updates the
+ticket in place and writes the move to `rebooking`. The delay impact page has
+a **Rebook all** button that runs it for every broken connection the notice
+caused; if no later flight on the route has room, MySQL's reason is shown for
+that PNR and the others still go through.

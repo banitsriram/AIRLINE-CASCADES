@@ -1,6 +1,6 @@
 # Normalization
 
-All 19 tables are in 3NF: every non-key attribute depends on the whole
+All 20 tables are in 3NF: every non-key attribute depends on the whole
 primary key and nothing but the key. Two attributes are deliberately
 denormalized, both for performance, and both are maintained exclusively by
 triggers/procedures rather than by application code, so they never drift out
@@ -29,6 +29,7 @@ of sync with the data they're derived from.
 | `delay_impact` | `impact_id` | One knock-on change: which notice, which flight, which link, and the before/after ETD at that moment. `old_etd`/`new_etd` are a historical record of that moment, not derivable later once other delays move the flight again. |
 | `cascade_candidate` | — | Scratch table, emptied at the end of every `simulate_delay()` call; holds no persistent facts. |
 | `ticket` | `ticket_id` | Seat, fare, class describe one seat on one flight within one booking — a booking can cover several flights (e.g. a connection), so this can't be folded into `booking`. |
+| `rebooking` | `rebooking_id` | One move of one ticket: the flight and seat it left, the flight and seat it went to, why, and when. The old flight and seat are history (the ticket row now holds the new ones), so they aren't derivable from anything else. |
 
 ## The two documented denormalizations
 

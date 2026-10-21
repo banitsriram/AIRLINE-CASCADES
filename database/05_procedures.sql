@@ -281,4 +281,164 @@ BEGIN
   COMMIT;
 END$$
 
+-- P4: Move the operation forward to p_now. Flights whose boarding time, ETD or
+-- ETA has passed become BOARDING, DEPARTED or ARRIVED, with actual times taken
+-- from the estimates. Arrivals fire trg_update_duty, so crew duty hours build up
+-- as the clock runs. Notices on flights that have left are closed, and bookings
+-- whose every leg has landed are completed. Never moves anything backwards.
+CREATE PROCEDURE advance_clock(IN p_now DATETIME)
+BEGIN
+  DECLARE v_boarding INT DEFAULT 0;
+  DECLARE v_departed INT DEFAULT 0;
+  DECLARE v_arrived INT DEFAULT 0;
+  DECLARE v_resolved INT DEFAULT 0;
+  DECLARE v_completed INT DEFAULT 0;
+  DECLARE EXIT HANDLER FOR SQLEXCEPTION
+  BEGIN
+    ROLLBACK;
+    RESIGNAL;
+  END;
+
+  START TRANSACTION;
+
+  UPDATE flight
+  SET status = 'DEPARTED',
+      actual_departure = DATE_ADD(sched_departure, INTERVAL delay_minutes MINUTE)
+  WHERE status IN ('SCHEDULED', 'BOARDING')
+    AND DATE_ADD(sched_departure, INTERVAL delay_minutes MINUTE) <= p_now;
+  SET v_departed = ROW_COUNT();
+
+  UPDATE flight
+  SET status = 'ARRIVED',
+      actual_arrival = DATE_ADD(sched_arrival, INTERVAL delay_minutes MINUTE)
+  WHERE status = 'DEPARTED'
+    AND DATE_ADD(sched_arrival, INTERVAL delay_minutes MINUTE) <= p_now;
+  SET v_arrived = ROW_COUNT();
+
+  UPDATE flight
+  SET status = 'BOARDING'
+  WHERE status = 'SCHEDULED'
+    AND DATE_ADD(COALESCE(boarding_start, DATE_SUB(sched_departure, INTERVAL 45 MINUTE)),
+                 INTERVAL delay_minutes MINUTE) <= p_now;
+  SET v_boarding = ROW_COUNT();
+
+  UPDATE flight_delay fd
+  JOIN flight f ON f.flight_id = fd.flight_id
+  SET fd.resolved_at = CURRENT_TIMESTAMP
+  WHERE fd.resolved_at IS NULL AND f.status IN ('DEPARTED', 'ARRIVED', 'DIVERTED');
+  SET v_resolved = ROW_COUNT();
+
+  UPDATE booking b
+  SET b.status = 'COMPLETED'
+  WHERE b.status IN ('CONFIRMED', 'CHECKED_IN')
+    AND EXISTS (SELECT 1 FROM ticket t WHERE t.booking_id = b.booking_id)
+    AND NOT EXISTS (SELECT 1 FROM ticket t JOIN flight f ON f.flight_id = t.flight_id
+                    WHERE t.booking_id = b.booking_id AND f.status <> 'ARRIVED');
+  SET v_completed = ROW_COUNT();
+
+  COMMIT;
+  SELECT v_boarding AS boarding, v_departed AS departed, v_arrived AS arrived,
+         v_resolved AS notices_closed, v_completed AS bookings_completed;
+END$$
+
+-- P5: Rebook one ticket onto the earliest later flight on the same route that
+-- the passenger can still make and that has a free seat. For a connecting
+-- journey "can still make" means departing at least the airport's minimum
+-- connection time after the inbound leg's current ETA; otherwise it means
+-- departing no earlier than the original flight. The seat is the lowest free
+-- one in the ticket's own cabin band where possible. The move is logged to
+-- rebooking.
+CREATE PROCEDURE rebook_ticket(
+  IN p_ticket_id INT,
+  IN p_reason VARCHAR(20),
+  OUT p_new_flight_id INT
+)
+BEGIN
+  DECLARE v_booking_id INT;
+  DECLARE v_old_flight INT;
+  DECLARE v_old_seat VARCHAR(4);
+  DECLARE v_class VARCHAR(10);
+  DECLARE v_route INT;
+  DECLARE v_origin INT;
+  DECLARE v_old_etd DATETIME;
+  DECLARE v_in_eta DATETIME;
+  DECLARE v_mct INT;
+  DECLARE v_earliest DATETIME;
+  DECLARE v_capacity INT;
+  DECLARE v_seat VARCHAR(4);
+  DECLARE EXIT HANDLER FOR SQLEXCEPTION
+  BEGIN
+    ROLLBACK;
+    RESIGNAL;
+  END;
+
+  START TRANSACTION;
+
+  SELECT t.booking_id, t.flight_id, t.seat_no, t.class, ft.route_id, ft.origin_airport_id, ft.etd
+  INTO v_booking_id, v_old_flight, v_old_seat, v_class, v_route, v_origin, v_old_etd
+  FROM ticket t JOIN v_flight_times ft ON ft.flight_id = t.flight_id
+  WHERE t.ticket_id = p_ticket_id
+  FOR UPDATE;
+  IF v_booking_id IS NULL THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Ticket not found';
+  END IF;
+
+  -- Inbound leg of the same booking that lands at this flight's origin
+  SELECT MAX(fi.eta) INTO v_in_eta
+  FROM ticket ti JOIN v_flight_times fi ON fi.flight_id = ti.flight_id
+  WHERE ti.booking_id = v_booking_id AND ti.ticket_id <> p_ticket_id
+    AND fi.dest_airport_id = v_origin AND fi.eta <= DATE_ADD(v_old_etd, INTERVAL 1 DAY)
+    AND fi.std < v_old_etd;
+  SELECT min_connect_min INTO v_mct FROM airport WHERE airport_id = v_origin;
+  SET v_earliest = IF(v_in_eta IS NULL, v_old_etd, DATE_ADD(v_in_eta, INTERVAL v_mct MINUTE));
+
+  SELECT ft.flight_id, at.seat_capacity INTO p_new_flight_id, v_capacity
+  FROM v_flight_times ft
+  JOIN aircraft ac ON ac.aircraft_id = ft.aircraft_id
+  JOIN aircraft_type at ON at.type_id = ac.type_id
+  WHERE ft.route_id = v_route
+    AND ft.flight_id <> v_old_flight
+    AND ft.status = 'SCHEDULED'
+    AND ft.etd >= v_earliest
+    AND (SELECT COUNT(*) FROM ticket t2 JOIN booking b2 ON b2.booking_id = t2.booking_id
+         WHERE t2.flight_id = ft.flight_id AND b2.status <> 'CANCELLED') < at.seat_capacity
+  ORDER BY ft.etd, ft.flight_id
+  LIMIT 1;
+  IF p_new_flight_id IS NULL THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No later flight on this route in the schedule has a free seat';
+  END IF;
+
+  -- Lock the new flight so two rebookings can't pick the same seat
+  SELECT flight_id INTO p_new_flight_id FROM flight WHERE flight_id = p_new_flight_id FOR UPDATE;
+
+  -- Seats are numbered 1A..nF, six abreast: rows 1 business, 2 premium, 3+ economy
+  SET v_seat = (
+    WITH RECURSIVE seat AS (
+      SELECT 1 AS n UNION ALL SELECT n + 1 FROM seat WHERE n < v_capacity
+    )
+    SELECT CONCAT(CEIL(n / 6), ELT(((n - 1) % 6) + 1, 'A','B','C','D','E','F'))
+    FROM seat
+    WHERE CONCAT(CEIL(n / 6), ELT(((n - 1) % 6) + 1, 'A','B','C','D','E','F')) NOT IN
+          (SELECT seat_no FROM ticket WHERE flight_id = p_new_flight_id)
+    ORDER BY CASE v_class
+               WHEN 'FIRST'    THEN n > 6
+               WHEN 'BUSINESS' THEN n > 6
+               WHEN 'PREMIUM'  THEN NOT (n BETWEEN 7 AND 12)
+               ELSE n <= 12 END,
+             n
+    LIMIT 1);
+  IF v_seat IS NULL THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No free seat on the replacement flight';
+  END IF;
+
+  UPDATE ticket
+  SET flight_id = p_new_flight_id, seat_no = v_seat, checked_in_at = NULL, boarded_at = NULL
+  WHERE ticket_id = p_ticket_id;
+
+  INSERT INTO rebooking (ticket_id, old_flight_id, new_flight_id, old_seat_no, new_seat_no, reason)
+  VALUES (p_ticket_id, v_old_flight, p_new_flight_id, v_old_seat, v_seat, p_reason);
+
+  COMMIT;
+END$$
+
 DELIMITER ;

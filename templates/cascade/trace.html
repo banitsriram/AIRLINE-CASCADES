@@ -1,10 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Cascade Trace — {{ flight.flight_number }}{% endblock %}
+{% block title %}Cascade trace — {{ flight.flight_number }}{% endblock %}
 {% block content %}
-<h1>Cascade Trace — {{ flight.flight_number }}</h1>
-
-<p><a class="btn btn-primary-warn" href="{{ url_for('flights.delay', flight_id=flight.flight_id) }}">Delay {{ flight.flight_number }}</a>
-  <span class="hint">The tree follows the aircraft and crew links recorded as each flight's knock-on source (parent_flight_id). The full impact of each delay, including runway-slot effects, is on its impact page.</span></p>
+<div class="page-header">
+  <h1>Cascade trace — <span class="nowrap">{{ flight.flight_number }}</span></h1>
+  <div class="actions">
+    <a class="btn btn-ghost" href="{{ url_for('flights.detail', flight_id=flight.flight_id) }}">Flight</a>
+    <a class="btn btn-primary-warn" href="{{ url_for('flights.delay', flight_id=flight.flight_id) }}">Delay {{ flight.flight_number }}</a>
+  </div>
+</div>
+<p class="hint">The tree follows each flight's recorded knock-on source (<code>parent_flight_id</code>) through a recursive CTE.
+  The full impact of a delay, including gate and runway-slot effects, is on its impact page.</p>
 
 <h2>Cascade tree (root: {{ flight.flight_number }})</h2>
 <table class="data-table">

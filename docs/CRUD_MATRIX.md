@@ -11,6 +11,7 @@ Which UI page/route implements each CRUD operation, per entity.
 | **Passenger** | `GET/POST /passengers/new` | `GET /passengers/`, `GET /passengers/<id>` | `GET/POST /passengers/<id>/edit` | `POST /passengers/<id>/delete` |
 | **Booking** | `GET/POST /bookings/new` (via `book_ticket()`) | `GET /bookings/`, `GET /bookings/<id>` | — (cancel is the only status transition) | `POST /bookings/<id>/cancel` (soft delete) |
 | **Ticket** | `POST /bookings/<id>/ticket` | `GET /bookings/<id>` (embedded) | `POST /bookings/ticket/<id>/checkin` (check-in only) | — (cascades with its booking) |
+| **Rebooking** | `POST /bookings/ticket/<id>/rebook`, `POST /delays/<id>/rebook` (via `rebook_ticket()`) | `GET /bookings/<id>` (embedded) | — (history) | — (cascades with its ticket) |
 | **Delay notice** | `GET/POST /flights/<id>/delay` (via `simulate_delay()`) | `GET /delays/`, `GET /delays/<id>` (impact page), `GET /flights/<id>` | `GET/POST /delays/<id>/edit` (non-timing fields), `POST /delays/<id>/resolve` | `GET/POST /delays/reset` (all, via `reset_all_delays()`) |
 | **Airport** (incl. hours, slots, MCT, turnaround) | `GET/POST /admin/airport/new` | `GET /airports/`, `GET /airports/<id>/board`, `GET /admin/airport/` | `GET/POST /admin/airport/<id>/edit` | `POST /admin/airport/<id>/delete` |
 | **Gate** | `GET/POST /admin/gate/new` | `GET /admin/gate/` | `GET/POST /admin/gate/<id>/edit` | `POST /admin/gate/<id>/delete` |
@@ -41,3 +42,14 @@ Which UI page/route implements each CRUD operation, per entity.
   affected passengers.
 - **Find replacement crew** — `GET /crew/replacement/<flight_id>`, calls
   `find_replacement_crew()`.
+- **Run the operations clock** — `POST /clock` (dashboard), calls
+  `advance_clock()`: boards, departs and lands flights whose time has come.
+- **Rebook stranded passengers** — `POST /delays/<id>/rebook` and
+  `POST /bookings/ticket/<id>/rebook`, call `rebook_ticket()`.
+
+## JSON API
+
+The same operations are available as JSON under `/api/v1` (see the README):
+flights, delays and their impact, airport boards, network flags, filing a
+delay (`POST /api/v1/flights/<id>/delays`) and running the clock
+(`POST /api/v1/clock`).

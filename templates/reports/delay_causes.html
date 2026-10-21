@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Top Delay Causes{% endblock %}
+{% block title %}Top delay causes{% endblock %}
 {% block content %}
-<h1>Top Delay Causes</h1>
+<h1>Top delay causes</h1>
 <table class="data-table">
-  <thead><tr><th>Category</th><th>Count</th><th>Total Minutes</th><th>Avg Minutes</th></tr></thead>
+  <thead><tr><th>Category</th><th>Count</th><th>Total minutes</th><th>Avg minutes</th></tr></thead>
   <tbody>
     {% for r in rows %}
     <tr><td>{{ r.category|human }}</td><td>{{ r.delay_count }}</td><td>{{ r.total_minutes }}</td><td>{{ r.avg_minutes }}</td></tr>
