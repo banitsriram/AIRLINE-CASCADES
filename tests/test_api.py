@@ -32,7 +32,8 @@ def test_filing_a_delay_runs_the_cascade(client):
     body = r.get_json()
     assert body["notice"]["flight_id"] == flight_id
     assert body["notice"]["minutes"] == 150
-    assert body["knock_on_flights"] == len(body["impacts"]) > 0
+    moved = {i["flight_id"] for i in body["impacts"]} - {flight_id}
+    assert body["knock_on_flights"] == len(moved) > 0
     assert client.get(f"/api/v1/flights/{flight_id}").get_json()["delay_minutes"] == 150
 
 

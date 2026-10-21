@@ -334,6 +334,24 @@ FROM (
   FROM seed_ticket
 ) seated;
 
+-- Flights that had already landed when the seed ran: their bookings are
+-- complete and their crew have the duty hours trg_update_duty would have
+-- booked (the trigger is installed after the seed, in 04_triggers.sql).
+UPDATE booking b
+SET b.status = 'COMPLETED'
+WHERE b.status IN ('CONFIRMED', 'CHECKED_IN')
+  AND NOT EXISTS (SELECT 1 FROM ticket t JOIN flight f ON f.flight_id = t.flight_id
+                  WHERE t.booking_id = b.booking_id AND f.status <> 'ARRIVED');
+
+INSERT INTO duty_log (crew_id, duty_date, hours_flown, hours_on_duty)
+SELECT ca.crew_id, DATE(f.actual_departure),
+       SUM(TIMESTAMPDIFF(MINUTE, f.actual_departure, f.actual_arrival)) / 60,
+       SUM(TIMESTAMPDIFF(MINUTE, f.actual_departure, f.actual_arrival)) / 60 + COUNT(*)
+FROM flight f
+JOIN crew_assignment ca ON ca.flight_id = f.flight_id
+WHERE f.status = 'ARRIVED'
+GROUP BY ca.crew_id, DATE(f.actual_departure);
+
 -- ============= MAINTENANCE LOGS (1 per aircraft, in the past) =============
 INSERT INTO maintenance_log (aircraft_id, maint_start, maint_end, type)
 WITH RECURSIVE seq AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM seq WHERE n < 40)

@@ -9,7 +9,7 @@ pytestmark = pytest.mark.usefixtures("fresh_db")
 
 
 def _violations():
-    call_proc("compute_cascade_candidates")
+    call_proc("compute_cascade_candidates", (None, None))
     return query(
         """SELECT c.link, COUNT(*) AS n FROM cascade_candidate c JOIN flight f USING (flight_id)
            WHERE c.required_delay > f.delay_minutes GROUP BY c.link"""
@@ -66,6 +66,18 @@ def test_delay_reaches_aircraft_crew_and_passengers():
     assert any(i["link"] == "CREW" and i["aircraft_id"] != flight["aircraft_id"] for i in impacts)
     affected = [flight["flight_id"]] + [i["flight_id"] for i in impacts]
     assert delays.affected_summary(affected)["missed"]
+
+
+def test_knock_on_counts_flights_not_impact_rows():
+    """A flight moved in several passes has several impact rows but is one
+    delayed flight, on the delay log and the impact page alike."""
+    delay = query("""SELECT delay_id, flight_id FROM flight_delay
+                     WHERE reported_by = 'test' ORDER BY delay_id DESC LIMIT 1""")[0]
+    rows = delays.impacts(delay["delay_id"])
+    distinct = {r["flight_id"] for r in rows} - {delay["flight_id"]}
+    listed = next(d for d in delays.list_delays() if d["delay_id"] == delay["delay_id"])
+    assert listed["knock_on_flights"] == len(distinct)
+    assert len(rows) > len(distinct), "this delay should move some flight more than once"
 
 
 def test_every_delay_is_accounted_for():
