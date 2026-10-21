@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 {% from "_macros.html" import field %}
-{% block title %}{{ 'Edit' if crew else 'New' }} Crew Member{% endblock %}
+{% block title %}{{ 'Edit' if crew else 'New' }} crew member{% endblock %}
 {% block content %}
-<h1>{{ 'Edit' if crew else 'New' }} Crew Member</h1>
+<h1>{{ 'Edit' if crew else 'New' }} crew member</h1>
 <form method="post" class="form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   {{ field('name', 'Name', crew.name if crew else '', required=True) }}
   {{ field('role', 'Role', crew.role if crew else '', type='select', options=enum_values('crew', 'role'), required=True) }}
   {{ field('base_airport_id', 'Base Airport', crew.base_airport_id if crew else '', type='fk', options=airports, required=True) }}

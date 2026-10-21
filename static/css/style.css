@@ -498,7 +498,6 @@ fieldset .check { align-self: end; padding-bottom: var(--spacing-12); }
   .topbar nav { flex: none; }
   .container { padding: var(--spacing-24) 16px var(--spacing-96); }
   .hero, .headline-block { grid-template-columns: 1fr; min-height: 0; }
-  .hero-visual { order: -1; }
   .constellation { aspect-ratio: 1 / 0.9; }
   .constellation-legend { text-align: left; }
   .data-table { display: block; overflow-x: auto; }
@@ -528,3 +527,5 @@ fieldset .check { align-self: end; padding-bottom: var(--spacing-12); }
 .record summary code { text-transform: none; }
 .record[open] summary { margin-bottom: var(--spacing-24); }
 .record dd { font-size: 15px; font-weight: var(--font-weight-regular); word-break: break-word; }
+
+.nowrap { white-space: nowrap; }

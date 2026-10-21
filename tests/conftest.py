@@ -32,5 +32,5 @@ def fresh_db():
 
 @pytest.fixture(scope="module")
 def client(fresh_db):
-    flask_app.config["TESTING"] = True
+    flask_app.config.update(TESTING=True, CSRF_ENABLED=False)
     return flask_app.test_client()

@@ -8,6 +8,7 @@
   <div class="actions">
     {% if booking.status != 'CANCELLED' %}
     <form method="post" action="{{ url_for('bookings.cancel', booking_id=booking.booking_id) }}" onsubmit="return confirm('Cancel this booking?');" class="inline-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn btn-danger">Cancel booking</button>
     </form>
     {% endif %}
@@ -37,12 +38,14 @@
         {% if booking.status != 'CANCELLED' and t.flight_status in ('SCHEDULED', 'CANCELLED') %}
         {% if not t.checked_in_at and t.flight_status == 'SCHEDULED' %}
         <form method="post" action="{{ url_for('bookings.checkin', ticket_id=t.ticket_id) }}" class="inline-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="hidden" name="booking_id" value="{{ booking.booking_id }}">
           <button type="submit" class="btn btn-small">Check in</button>
         </form>
         {% endif %}
         <form method="post" action="{{ url_for('bookings.rebook', ticket_id=t.ticket_id) }}" class="inline-form"
               onsubmit="return confirm('Move this ticket to the next flight on {{ t.origin }} → {{ t.dest }} with a free seat?');">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="hidden" name="booking_id" value="{{ booking.booking_id }}">
           <input type="hidden" name="reason" value="{{ 'CANCELLATION' if t.flight_status == 'CANCELLED' else 'PASSENGER_REQUEST' }}">
           <button type="submit" class="btn btn-small">Rebook</button>
@@ -76,6 +79,7 @@
 
 <h2>Add another ticket</h2>
 <form method="post" action="{{ url_for('bookings.add_ticket', booking_id=booking.booking_id) }}" class="form-inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <select name="flight_id" required>
     {% for f in flights %}
     <option value="{{ f.flight_id }}">{{ f.flight_number }} ({{ f.origin }} → {{ f.dest }})</option>

@@ -4,7 +4,7 @@
 {% block title %}Flight {{ flight.flight_number }}{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h1>{{ flight.flight_number }} — {{ flight.origin }} → {{ flight.dest }}</h1>
+  <h1><span class="nowrap">{{ flight.flight_number }}</span> — <span class="nowrap">{{ flight.origin }} → {{ flight.dest }}</span></h1>
   <div class="actions">
     {% if flight.status in ('SCHEDULED', 'BOARDING', 'DEPARTED') %}
     <a class="btn btn-primary-warn" href="{{ url_for('flights.delay', flight_id=flight.flight_id) }}">Delay this flight</a>
@@ -13,6 +13,7 @@
     <a class="btn btn-ghost" href="{{ url_for('cascade.trace', flight_id=flight.flight_id) }}">Cascade trace</a>
     <a class="btn btn-ghost" href="{{ url_for('crew.replacement', flight_id=flight.flight_id) }}">Replacement crew</a>
     <form method="post" action="{{ url_for('flights.delete', flight_id=flight.flight_id) }}" onsubmit="return confirm('Delete this flight?');" class="inline-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn btn-danger">Delete</button>
     </form>
   </div>
@@ -43,6 +44,7 @@
       <td>{{ c.assigned_at|when }}</td>
       <td>
         <form method="post" action="{{ url_for('flights.unassign_crew', flight_id=flight.flight_id, crew_id=c.crew_id) }}" class="inline-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-small">Unassign</button>
         </form>
       </td>
@@ -54,6 +56,7 @@
 </table>
 
 <form method="post" action="{{ url_for('flights.assign_crew', flight_id=flight.flight_id) }}" class="form-inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <select name="crew_id" required aria-label="Crew member">
     {% for c in all_crew %}
     <option value="{{ c.id }}">{{ c.label }}</option>

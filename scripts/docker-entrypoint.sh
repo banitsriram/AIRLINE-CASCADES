@@ -33,4 +33,7 @@ if [ "$built" = "0" ] || [ "${REBUILD_DB:-0}" = "1" ]; then
   bash scripts/setup_db.sh
 fi
 
+# One key shared by every worker, so sessions survive across them
+export SECRET_KEY="${SECRET_KEY:-$(python -c 'import secrets; print(secrets.token_hex(32))')}"
+
 exec gunicorn --workers "${WEB_WORKERS:-3}" --bind "0.0.0.0:${PORT:-5000}" --access-logfile - app:app

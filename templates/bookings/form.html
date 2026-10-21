@@ -1,10 +1,11 @@
 {% extends "base.html" %}
 {% from "_macros.html" import field %}
-{% block title %}New Booking{% endblock %}
+{% block title %}New booking{% endblock %}
 {% block content %}
-<h1>New Booking</h1>
+<h1>New booking</h1>
 <p>Creates a booking with its first ticket in one step (calls the book_ticket procedure).</p>
 <form method="post" class="form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <label class="field">
     <span>Passenger *</span>
     <select name="passenger_id" required>

@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Edit delay #{{ notice.delay_id }}{% endblock %}
 {% block content %}
-<h1>Edit delay #{{ notice.delay_id }} — {{ notice.flight_number }}</h1>
+<h1>Edit delay #{{ notice.delay_id }} — <span class="nowrap">{{ notice.flight_number }}</span></h1>
 <p class="hint">Timing ({{ notice.minutes }} min, IATA {{ notice.iata_code }}) is locked once the delay has cascaded. To add more time, file another delay on the flight.</p>
 <form method="post" class="form form-wide">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <label class="field"><span>Details / sub-reason</span><input type="text" name="sub_reason" maxlength="200" value="{{ notice.sub_reason or '' }}"></label>
   <label class="field"><span>Public announcement</span><textarea name="announcement" rows="3" maxlength="500">{{ notice.announcement or '' }}</textarea></label>
   <div class="checks">

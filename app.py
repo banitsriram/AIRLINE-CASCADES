@@ -6,6 +6,7 @@ from flask import Flask, jsonify, render_template, request
 from flask.json.provider import DefaultJSONProvider
 import mysql.connector
 
+from src import csrf
 from src.config import Settings
 from src.db import query
 from src.services.lookups import enum_values
@@ -44,6 +45,7 @@ def create_app():
     app = Flask(__name__, template_folder="templates", static_folder="static")
     app.json = JSONProvider(app)
     app.config.from_object(Settings)
+    csrf.init_app(app)
 
     app.register_blueprint(dashboard.bp)
     app.register_blueprint(flights.bp, url_prefix="/flights")
@@ -66,6 +68,10 @@ def create_app():
         renamed column, a missing table...). Say exactly what MySQL reported."""
         return render_template("error.html", title="The database rejected this page",
                                message=err.msg, code=err.errno), 500
+
+    @app.errorhandler(400)
+    def bad_request(err):
+        return render_template("error.html", title="Request refused", message=err.description, code=400), 400
 
     @app.errorhandler(404)
     def not_found(err):
@@ -119,4 +125,4 @@ def create_app():
 app = create_app()
 
 if __name__ == "__main__":
-    app.run(debug=os.environ.get("FLASK_DEBUG", "1") == "1", port=int(os.environ.get("PORT", 5000)))
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "1", port=int(os.environ.get("PORT", 5000)))

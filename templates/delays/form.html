@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-header">
   <div>
-    <h1>Delay {{ flight.flight_number }}</h1>
+    <h1>Delay <span class="nowrap">{{ flight.flight_number }}</span></h1>
     <p>{{ flight.origin_city }} to {{ flight.dest_city }}. Filing this moves every flight that depends on it.</p>
   </div>
   <a class="btn btn-ghost" href="{{ url_for('flights.detail', flight_id=flight.flight_id) }}">Back to flight</a>
@@ -23,6 +23,7 @@
       data-boarding="{{ flight.boarding_start.strftime('%Y-%m-%dT%H:%M') if flight.boarding_start else '' }}"
       data-delay="{{ flight.delay_minutes }}"
       data-flight="{{ flight.flight_number }}" data-dest="{{ flight.dest_city }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
   <fieldset>
     <legend>Delay notice</legend>

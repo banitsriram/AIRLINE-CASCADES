@@ -7,6 +7,7 @@
   <div class="actions">
     <a class="btn btn-ghost" href="{{ url_for('passengers.edit', passenger_id=passenger.passenger_id) }}">Edit</a>
     <form method="post" action="{{ url_for('passengers.delete', passenger_id=passenger.passenger_id) }}" onsubmit="return confirm('Delete this passenger?');" class="inline-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn btn-danger">Delete</button>
     </form>
   </div>

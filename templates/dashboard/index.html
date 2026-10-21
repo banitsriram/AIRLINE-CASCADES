@@ -53,6 +53,7 @@
   finished journeys. It only moves forward; rebuild the database to start over.
 </p>
 <form method="post" action="{{ url_for('dashboard.advance_clock') }}" class="form-inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="datetime-local" name="until" value="{{ now.strftime('%Y-%m-%dT%H:%M') }}" required aria-label="Run the operation to">
   <button type="submit" class="btn btn-ghost">Run to this time</button>
 </form>

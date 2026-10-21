@@ -1,5 +1,7 @@
 # Airline Cascades
 
+[![CI](https://github.com/banitsriram/AIRLINE-CASCADES/actions/workflows/ci.yml/badge.svg)](https://github.com/banitsriram/AIRLINE-CASCADES/actions/workflows/ci.yml)
+
 An airline operations database where one late flight moves everything that
 depends on it. File a delay on any flight and MySQL works out the knock-on
 effects across the whole network: the same aircraft's later legs, the crew
@@ -11,7 +13,7 @@ trouble are flagged.
 The logic lives in the database (stored procedures, triggers, views and a
 recursive CTE); the Flask app is a thin layer that shows it and lets you drive it.
 
-![Dashboard](docs/screenshots/01-dashboard.png)
+![Dashboard](docs/screenshots/dashboard.png)
 
 ## What it does
 
@@ -42,7 +44,23 @@ recursive CTE); the Flask app is a thin layer that shows it and lets you drive i
   tables or views) show on the next page load.
 - **JSON API** for the same operations, under `/api/v1`.
 
-![Impact of one delay](docs/screenshots/19-delay-impact.png)
+## Screenshots
+
+| | |
+|---|---|
+| ![Filing a delay](docs/screenshots/delay-form.png) | ![Cascade trace](docs/screenshots/cascade-trace.png) |
+| Filing a delay: the form derives the new ETD, ETA and boarding time | Cascade trace: the delay tree from a recursive CTE |
+| ![Airport board](docs/screenshots/airport-board.png) | ![Rebooked passenger](docs/screenshots/booking-rebooked.png) |
+| Airport board after the clock has run | A passenger moved off a missed connection |
+| ![On-time report](docs/screenshots/report-ontime.png) | ![Schema browser](docs/screenshots/schema.png) |
+| On-time performance by day | Live schema browser (read from `information_schema`) |
+
+<details>
+<summary>Impact page for one 180-minute delay</summary>
+
+![Impact of one delay](docs/screenshots/delay-impact.png)
+
+</details>
 
 ## Data
 
@@ -81,11 +99,15 @@ enforced `CHECK` constraints), with the `mysql` client on your PATH.
 cp .env.example .env          # set your MySQL password
 pip install -r requirements.txt
 bash scripts/setup_db.sh      # SEED_DAYS=28 bash scripts/setup_db.sh for four weeks
-python app.py
+FLASK_DEBUG=1 python app.py
 ```
 
 Rebuilding the database is also how you start over: the seed is relative to
 the day you build it.
+
+There are no user accounts: it is a single-operator tool. Forms are
+CSRF-protected and the API only accepts JSON, but run it locally or behind
+your own authentication rather than on the open internet.
 
 ## A quick tour
 

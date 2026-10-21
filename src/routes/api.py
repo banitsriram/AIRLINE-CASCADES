@@ -32,6 +32,14 @@ def _error(message, status, **extra):
     return jsonify({"error": message, **extra}), status
 
 
+@bp.before_request
+def _json_only():
+    """Writes must be JSON. Besides being the API's contract, this keeps the
+    endpoints out of reach of cross-site HTML forms."""
+    if request.method == "POST" and not request.is_json:
+        return _error("Send a JSON body with Content-Type: application/json", 415)
+
+
 @bp.errorhandler(404)
 def _not_found(_err):
     return _error("Not found", 404)
@@ -159,7 +167,9 @@ def network():
 
 @bp.post("/clock")
 def clock():
-    body = request.get_json(silent=True) or {}
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict):
+        body = {}
     try:
         until = datetime.fromisoformat(body["until"]) if body.get("until") else datetime.now()
     except (TypeError, ValueError):

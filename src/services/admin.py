@@ -39,21 +39,21 @@ ENTITIES = {
     "aircraft_type": {
         "table": "aircraft_type",
         "pk": "type_id",
-        "label": "Aircraft Types",
+        "label": "Aircraft types",
         "item": "aircraft type",
         "order_by": "manufacturer, model",
         "fields": [
             {"name": "model", "type": "text", "required": True, "label": "Model"},
             {"name": "manufacturer", "type": "text", "required": True, "label": "Manufacturer"},
-            {"name": "seat_capacity", "type": "number", "required": True, "label": "Seat Capacity"},
-            {"name": "max_range_km", "type": "number", "required": True, "label": "Max Range (km)"},
-            {"name": "cruise_speed_kmh", "type": "number", "required": False, "label": "Cruise Speed (km/h)"},
+            {"name": "seat_capacity", "type": "number", "required": True, "label": "Seat capacity"},
+            {"name": "max_range_km", "type": "number", "required": True, "label": "Max range (km)"},
+            {"name": "cruise_speed_kmh", "type": "number", "required": False, "label": "Cruise speed (km/h)"},
         ],
     },
     "delay_reason": {
         "table": "delay_reason",
         "pk": "reason_id",
-        "label": "Delay Reasons",
+        "label": "Delay reasons",
         "item": "delay reason",
         "order_by": "category",
         "fields": [
@@ -70,7 +70,7 @@ ENTITIES = {
     "delay_code": {
         "table": "delay_code",
         "pk": "code_id",
-        "label": "IATA Delay Codes",
+        "label": "IATA delay codes",
         "item": "IATA delay code",
         "order_by": "iata_code",
         "fields": [
@@ -101,7 +101,7 @@ ENTITIES = {
         "fields": [
             {"name": "registration", "type": "text", "required": True, "label": "Registration"},
             {"name": "type_id", "type": "fk", "required": True, "label": "Type", "ref": "aircraft_type"},
-            {"name": "base_airport_id", "type": "fk", "required": True, "label": "Base Airport", "ref": "airport"},
+            {"name": "base_airport_id", "type": "fk", "required": True, "label": "Base airport", "ref": "airport"},
             {
                 "name": "status",
                 "type": "select",
@@ -114,7 +114,7 @@ ENTITIES = {
     "maintenance_log": {
         "table": "maintenance_log",
         "pk": "maint_id",
-        "label": "Maintenance Log",
+        "label": "Maintenance log",
         "item": "maintenance entry",
         "order_by": "maint_start DESC",
         "fields": [
