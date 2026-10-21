@@ -1,7 +1,9 @@
 -- Passengers affected by a cascade rooted at a given flight.
--- Example below is for flight_id = 1.
+-- Runs for the flight of the first delay notice; set @flight_id to use another.
+SET @flight_id = (SELECT flight_id FROM flight_delay ORDER BY delay_id LIMIT 1);
+
 WITH RECURSIVE cascade_tree AS (
-  SELECT flight_id FROM flight WHERE flight_id = 1
+  SELECT flight_id FROM flight WHERE flight_id = @flight_id
   UNION ALL
   SELECT f.flight_id FROM flight f
   JOIN cascade_tree ct ON f.parent_flight_id = ct.flight_id

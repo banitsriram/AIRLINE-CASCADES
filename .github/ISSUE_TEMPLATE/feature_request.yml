@@ -1,0 +1,16 @@
+name: Feature request
+description: Suggest a new rule, page or capability
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would it let you do?
+      description: The situation or question it helps with.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How might it work?
+      description: For a new cascade rule, say what the dependency is and how its requirement would be calculated.

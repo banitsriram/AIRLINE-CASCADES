@@ -17,6 +17,9 @@ recursive CTE); the Flask app is a thin layer that shows it and lets you drive i
 
 ## What it does
 
+The full design of the engine, with a worked example of one delay settling
+over six passes, is in **[docs/CASCADE_ENGINE.md](docs/CASCADE_ENGINE.md)**.
+
 - **Delay cascade.** `simulate_delay()` applies a delay notice (IATA AHM 730
   code, minutes or a new ETD, gate change, aircraft swap, passenger care) and
   then re-evaluates four rules until nothing else moves:
@@ -43,6 +46,25 @@ recursive CTE); the Flask app is a thin layer that shows it and lets you drive i
   Changes made directly in the MySQL client (new rows, columns, ENUM values,
   tables or views) show on the next page load.
 - **JSON API** for the same operations, under `/api/v1`.
+
+## MySQL techniques, and where to find them
+
+The project is a working reference for doing real work inside MySQL 8:
+
+| Technique | Where |
+|---|---|
+| Fixed-point iteration in a stored procedure (loop until `ROW_COUNT() = 0`) | `simulate_delay()` in [05_procedures.sql](database/05_procedures.sql) |
+| Window functions: `LAG()` to find each flight's predecessor, `ROW_NUMBER()` for slot ranking and picking the winning rule | `compute_cascade_candidates()` in [05_procedures.sql](database/05_procedures.sql) |
+| Recursive CTE over a self-referencing foreign key | `analyse_cascade()` in [05_procedures.sql](database/05_procedures.sql) |
+| Recursive CTEs as number generators for seed data and seat maps | [03_seed_operational.sql](database/03_seed_operational.sql), `rebook_ticket()` |
+| Transactions with `EXIT HANDLER` → `ROLLBACK; RESIGNAL` | `simulate_delay()`, `book_ticket()`, `rebook_ticket()`, `advance_clock()` |
+| Row locking with `SELECT ... FOR UPDATE` against double-booking | `rebook_ticket()` |
+| Triggers that enforce rules with `SIGNAL SQLSTATE '45000'` | `trg_check_duty_limit`, `trg_no_double_seat` in [04_triggers.sql](database/04_triggers.sql) |
+| Trigger maintaining a running aggregate with an upsert | `trg_update_duty` in [04_triggers.sql](database/04_triggers.sql) |
+| Views for derived state that can't go stale (estimates, missed connections, duty breaches, curfews) | [06_views.sql](database/06_views.sql) |
+| `CHECK` constraints, a generated column, and their MySQL limits | [01_schema.sql](database/01_schema.sql), [DEVIATIONS.md](docs/DEVIATIONS.md) |
+| Cursor-driven procedure (greedy gate assignment) | `seed_assign_gates()` in [03_seed_operational.sql](database/03_seed_operational.sql) |
+| Reading the live schema from `information_schema` (ENUM dropdowns, schema browser) | [schema_info.py](src/services/schema_info.py), [lookups.py](src/services/lookups.py) |
 
 ## Screenshots
 
@@ -102,6 +124,9 @@ bash scripts/setup_db.sh      # SEED_DAYS=28 bash scripts/setup_db.sh for four w
 FLASK_DEBUG=1 python app.py
 ```
 
+The [Makefile](Makefile) wraps these: `make install`, `make db` (or
+`make db-month`), `make run`, `make test`.
+
 Rebuilding the database is also how you start over: the seed is relative to
 the day you build it.
 
@@ -140,13 +165,12 @@ Filing a delay takes the same fields as the form and returns the notice with
 its knock-on impact:
 
 ```
-curl -X POST localhost:5000/api/v1/flights/412/delays \
+curl -X POST localhost:5000/api/v1/flights/206/delays \
   -H 'Content-Type: application/json' \
   -d '{"code": "41", "minutes": 120, "reported_by": "MCC", "meal_voucher": true}'
 ```
 
-Invalid notices get a `422` listing what's wrong; a flight that has already
-landed gets a `409` with MySQL's message.
+Fields, responses and errors for every endpoint are in [docs/API.md](docs/API.md).
 
 ## Tests
 
@@ -158,15 +182,16 @@ pytest
 Each test module rebuilds the database first, so point `.env` at a database
 you don't mind losing. The suite covers the cascade invariants (zero-delay
 consistency, every minute accounted for, no rule left violated after it
-settles), rebooking, the clock, the API, every page rendering, and hand-made
-schema changes. CI runs it against MySQL 8.0 and also builds and starts the
+settles), rebooking, the clock, the API, CSRF protection, every page
+rendering, and hand-made schema changes. CI runs it on Python 3.9 and 3.13
+against MySQL 8.0, builds a 28-day schedule, and builds and starts the
 Docker image.
 
 ## Layout
 
 ```
 database/         schema, seed data, triggers, procedures, views (run in order)
-  queries/        the eight analytical queries behind the reports
+  queries/        the reports' analytical queries as standalone SQL
 src/services/     all SQL used by the app, one module per area
 src/routes/       Flask blueprints (pages and /api/v1)
 templates/        Jinja templates
@@ -178,6 +203,8 @@ docs/             design notes
 
 ## Design notes
 
+- [docs/CASCADE_ENGINE.md](docs/CASCADE_ENGINE.md): how the cascade works, why it terminates, how passes are kept cheap, and a worked example
+- [docs/API.md](docs/API.md): the JSON API with real request and response examples
 - [docs/SCHEMA_DIAGRAM.md](docs/SCHEMA_DIAGRAM.md): ER diagram and the 20 tables by dependency layer
 - [docs/NORMALIZATION.md](docs/NORMALIZATION.md): 3NF per table and the two deliberate denormalizations
 - [docs/DEVIATIONS.md](docs/DEVIATIONS.md): MySQL restrictions that shaped the design, e.g. why the cascade is a procedure and not a trigger
@@ -185,6 +212,12 @@ docs/             design notes
 - [docs/CRUD_MATRIX.md](docs/CRUD_MATRIX.md): which page implements each operation
 
 Originally built as a database systems course project.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Changes are listed in
+[CHANGELOG.md](CHANGELOG.md); security reports go through
+[SECURITY.md](SECURITY.md).
 
 ## License
 
